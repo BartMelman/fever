@@ -72,9 +72,9 @@ if [ ! -d $DEPENDENCIES_DIR/$DRQA_DIR ]; then
     git clone https://github.com/facebookresearch/DrQA.git $DEPENDENCIES_DIR/$DRQA_DIR
 fi
 
-# === create if idf data base === #
-if [ ! -d $DEPENDENCIES_DIR/$DATABASE_DIR/if_idf.db ]; then
-    python3 $SCRIPTS_DIR/$SCRIPTS_DATABASE_DIR/build_tfidf.py $DATA_DIR/$DATABASE_DIR/if_idf.db $DATA_DIR/$DATABASE_DIR/
-fi
+# # === create if idf data base === #
+# if [ ! -d $DEPENDENCIES_DIR/$DATABASE_DIR/if_idf.db ]; then
+#     python3 $SCRIPTS_DIR/$SCRIPTS_DATABASE_DIR/build_tfidf.py $DATA_DIR/$DATABASE_DIR/if_idf.db $DATA_DIR/$DATABASE_DIR/
+# fi
 
 
