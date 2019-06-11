@@ -5,7 +5,6 @@ from tqdm import tqdm
 from tqdm import tnrange
 from document import Document
 from wiki_database import WikiDatabase
-from text_database import TextDatabase
 
 # from tf_idf import count_n_grams, vocabulary_text, tf_idf
 from utils_db import num_files_in_directory, load_jsonl, save_dict_pickle, load_dict_pickle, dict_load_json, dict_save_json
