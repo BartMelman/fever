@@ -21,6 +21,7 @@ DRQA_DIR='_01_drqa'
 CORE_NLP_DIR='_02_core_nlp'
 
 mkdir -p $DATA_DIR/$WIKI_PAGES_DIR
+mkdir -p $DATA_DIR/$DATABASE_DIR
 # mkdir -p $DATA_DIR/$IR_DIR
 mkdir -p $TMP_DIR
 mkdir -p $RESULTS_DIR
