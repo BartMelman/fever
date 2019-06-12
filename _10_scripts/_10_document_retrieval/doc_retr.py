@@ -27,10 +27,10 @@ if __name__ == '__main__':
     # path_mydict_ids = 'mydict_ids.sqlite'
 
     # === settings experiment === #
-    n_gram = 1
+    n_gram = 2
     # method_tokenization = ['tokenize', 'remove_space', 'make_lower_case', 'lemmatization_get_nouns']
     method_tokenization = ['tokenize', 'make_lower_case']
-    threshold = 0.005
+    threshold = 0.001
     method_tf = 'raw_count' # raw_count term_frequency
     method_df = 'inverse_document_frequency' # 
     delimiter = '\k'

@@ -133,7 +133,8 @@ class Vocabulary:
         # output
         # - [dict] : dictionary of counts for n_grams
         separator = ' '
-        
+        if self.n_gram > 1:
+            batch_size = 3500000
         if os.path.isfile(self.path_word_count):
             print('Word count dictionary already exists')
         else:  
@@ -149,10 +150,16 @@ class Vocabulary:
                 
                 n_gramfdist.update(ngrams(tokenized_text, self.n_gram))
                 
-            with SqliteDict(self.path_word_count) as dict_words:
-                for key, value in tqdm(n_gramfdist.items(), desc='word count dictionary'):
-                    dict_words[' '.join(key)] = value
-                dict_words.commit()
+                if (id_nr%batch_size==0) or (id_nr == self.text_database.nr_rows):
+                    with SqliteDict(self.path_word_count) as dict_words:
+                        for key, value in tqdm(n_gramfdist.items(), desc='word count dictionary'):
+                            word = ' '.join(key)
+                            if word in dict_words:
+                                dict_words[word] = dict_words[word] + value
+                            else:
+                                dict_words[word] = value
+                        dict_words.commit()
+                    n_gramfdist = FreqDist()
             
         return self.nr_words
     
@@ -165,7 +172,7 @@ class Vocabulary:
         # - [dict] : dictionary of counts for n_grams
         
         separator = ' '
-        
+        batch_size = 3500000
         if os.path.isfile(self.path_document_count):
             print('Document count dictionary already exists')
         else:     
@@ -175,10 +182,16 @@ class Vocabulary:
                 tokenized_text_reduced = list(set(tokenized_text))
                 n_gramfdist.update(ngrams(tokenized_text_reduced, self.n_gram))
 
-            with SqliteDict(self.path_document_count) as dict_document_count:
-                for key, value in tqdm(n_gramfdist.items(), desc='document count dictionary'):
-                    dict_document_count[' '.join(key)] = value
-                dict_document_count.commit()
+                if (id_nr%batch_size==0) or (id_nr == self.text_database.nr_rows):
+                    with SqliteDict(self.path_document_count) as dict_document_count:
+                        for key, value in tqdm(n_gramfdist.items(), desc='document count dictionary'):
+                            word = ' '.join(key)
+                            if word in dict_document_count:
+                                dict_document_count[word] = dict_document_count[word] + value
+                            else:
+                                dict_document_count[' '.join(key)] = value
+                        dict_document_count.commit()
+                    n_gramfdist = FreqDist()
                  
 def count_n_grams(tokenized_text, n_gram, output_format):
     # description: 
