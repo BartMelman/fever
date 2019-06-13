@@ -172,7 +172,7 @@ class Vocabulary:
         # - [dict] : dictionary of counts for n_grams
         
         separator = ' '
-        batch_size = 3500000
+        batch_size = 1000000
         if os.path.isfile(self.path_document_count):
             print('Document count dictionary already exists')
         else:     
