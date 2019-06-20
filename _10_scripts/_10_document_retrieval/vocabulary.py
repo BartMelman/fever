@@ -42,17 +42,24 @@ class Vocabulary:
         self.path_word_count = os.path.join(self.base_dir, 'word_count.sqlite')
         self.path_document_count = os.path.join(self.base_dir, 'document_count.sqlite')
         self.path_vocabulary_selected = os.path.join(self.base_dir, 'vocabulary_selected.json')
+        self.path_settings = os.path.join(self.base_dir, 'settings.json')
         self.nr_words = None
         
+        if os.path.isfile(self.path_settings):
+            print('Load existing settings file')
+            self.settings = dict_load_json(self.path_settings)
+        else:
+            self.settings = {}
+
         if os.path.isfile(self.path_word_count):
             print('Word count count dictionary already exists')
         else:
             self.get_word_count()
         
-        print('count total number of words')
-        with SqliteDict(self.path_word_count) as dict_word_count:
-            # self.nr_words = sum(list(dict_word_count.values()))
-            self.nr_words = len(dict_word_count)
+        # print('count total number of words')
+        # with SqliteDict(self.path_word_count) as dict_word_count:
+        #     # self.nr_words = sum(list(dict_word_count.values()))
+        #     self.nr_words = len(dict_word_count)
         
         if os.path.isfile(self.path_document_count):
             print('Document count dictionary already exists')
@@ -176,13 +183,23 @@ class Vocabulary:
         if os.path.isfile(self.path_document_count):
             print('Document count dictionary already exists')
         else:     
+            nr_n_grams = 0 # nr of different n-grams
             n_gramfdist = FreqDist()
             for id_nr in tqdm(range(1, self.text_database.nr_rows+1), desc='document count'):
-                tokenized_text = self.text_database.get_tokenized_text_from_id(id_nr, self.method_tokenization)
-                tokenized_text_reduced = list(set(tokenized_text))
-                n_gramfdist.update(ngrams(tokenized_text_reduced, self.n_gram))
+                if self.source == 'text':
+                    tokenized_text = self.text_database.get_tokenized_text_from_id(id_nr, self.method_tokenization)
+                elif self.source == 'title':
+                    tokenized_text = self.text_database.get_tokenized_title_from_id(id_nr, self.method_tokenization)
+                else:
+                    raise ValueError('source not in options', self.source)
 
-                if (id_nr%batch_size==0) or (id_nr == self.text_database.nr_rows):
+                # tokenized_text_reduced = list(set(tokenized_text))
+                n_gram_text = ngrams(tokenized_text, self.n_gram)
+                n_gram_text_unique = unique_values(sorted(n_gram_text))
+
+                n_gramfdist.update(n_gram_text_unique)
+
+                if (id_nr%batch_size == 0) or (id_nr == self.text_database.nr_rows):
                     with SqliteDict(self.path_document_count) as dict_document_count:
                         for key, value in tqdm(n_gramfdist.items(), desc='document count dictionary'):
                             word = ' '.join(key)
@@ -190,9 +207,22 @@ class Vocabulary:
                                 dict_document_count[word] = dict_document_count[word] + value
                             else:
                                 dict_document_count[' '.join(key)] = value
+                                nr_n_grams += 1
                         dict_document_count.commit()
                     n_gramfdist = FreqDist()
-                 
+
+            self.settings['nr_n_grams'] = nr_n_grams
+            dict_save_json(self.settings, self.path_settings)
+
+def unique_values(iterable):
+    it = iter(iterable)
+    previous = next(it)
+    yield previous
+    for item in it:
+        if item != previous:
+            previous = item
+            yield item
+
 def count_n_grams(tokenized_text, n_gram, output_format):
     # description: 
     # input

@@ -15,6 +15,7 @@ def num_files_in_directory(path_directory):
     return number_of_files
 
 def load_jsonl(filename):
+    # description: only use for wikipedia dump
     d_list = []
     with open(filename, encoding='utf-8', mode='r') as in_f:
 #         print("Load Jsonl:", filename)

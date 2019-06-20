@@ -85,13 +85,20 @@ class TFIDFDatabase:
         
         with SqliteDict(self.vocab.path_document_count) as document_count_dict:
             with SqliteDict(self.path_vocabulary_selected_dict) as vocabulary_selected_dict:
-                for word, value in tqdm(document_count_dict.items(), desc='vocabulary selected', total = self.vocab.nr_words):
+                iter_nr = 0
+                batch_size = 100000
+                for word, value in tqdm(document_count_dict.items(), desc='vocabulary selected'):
                     if (value/float(self.nr_wiki_pages)) < self.threshold:
                         vocabulary_selected_dict[word] = 1
                     else: 
                         vocabulary_selected_dict[word] = 0
-                    
-                vocabulary_selected_dict.commit()                
+
+                    iter_nr+=1
+
+                    if iter_nr==batch_size:
+                        iter_nr = 0
+                        vocabulary_selected_dict.commit()         
+                vocabulary_selected_dict.commit()            
         
     def construct_empty_database(self):
         # description: construct the database with as rows all the possible words. We only enter the 'F' as first element.
@@ -99,9 +106,17 @@ class TFIDFDatabase:
         with SqliteDict(self.path_tf_idf_dict_empty) as mydict_tf_idf:
             with SqliteDict(self.path_ids_dict_empty) as mydict_ids:
                 with SqliteDict(self.vocab.path_document_count) as document_count_dict:
-                    for key, value in tqdm(document_count_dict.items(), desc='empty database', total = self.vocab.nr_words):
+                    iter_nr = 0
+                    batch_size = 100000
+                    for key, value in tqdm(document_count_dict.items(), desc='empty database', total = self.vocab.settings['nr_n_grams']):
                         mydict_tf_idf[key] = self.default_first_value
                         mydict_ids[key] = self.default_first_value
+
+                        iter_nr+=1
+
+                        if iter_nr==batch_size:
+                            iter_nr = 0
+                            mydict_tf_idf.commit()
                 mydict_ids.commit()
             mydict_tf_idf.commit()
                 
@@ -136,7 +151,7 @@ class TFIDFDatabase:
                     total_count_doc = self.vocab.nr_wiki_pages
                     total_count_tf = nr_words_doc
                     
-                    for word in tf_dict.keys():
+                    for word in tf_dict:
                         count_tf = tf_dict[word]
                         count_doc = dict_document_count[word]
                         
@@ -151,6 +166,7 @@ class TFIDFDatabase:
                                 list_keys = list(batch_dictionary.dictionary_tf_idf.keys())
                                 for i in tqdm(range(len(list_keys)), desc='batch'):
                                     word = list_keys[i] 
+                                    
                                     if vocabulary_selected_dict[word] == 1:
                                         tf_idf_value = batch_dictionary.dictionary_tf_idf[word]['values']
                                         id_word = batch_dictionary.dictionary_tf_idf[word]['ids']
