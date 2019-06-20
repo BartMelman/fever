@@ -29,7 +29,7 @@ if __name__ == '__main__':
     # path_mydict_ids = 'mydict_ids.sqlite'
 
     # === settings experiment === #
-    n_gram = 1
+    n_gram = 2
     # method_tokenization = ['tokenize', 'remove_space', 'make_lower_case', 'lemmatization_get_nouns']
     method_tokenization = ['tokenize', 'make_lower_case']
     threshold = 0.005
