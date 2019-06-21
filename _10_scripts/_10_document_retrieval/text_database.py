@@ -46,7 +46,7 @@ class Text:
         
         if text_type == 'title':
             self.text = self.text.replace(self.delimiter_title, self.delimiter_text)
-            self.delimiter = self.delimiter_title
+            self.delimiter = self.delimiter_text
         else:
             self.delimiter = self.delimiter_text
             

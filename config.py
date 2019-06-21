@@ -17,7 +17,7 @@ RAW_DATA_DIR='_01_raw_data'
 WIKI_PAGES_DIR='_02_wikipedia_pages' 
 DATABASE_DIR='_03_database'
 
-CONFIG_DIR='02_config'
+CONFIG_DIR='_02_configs'
 
 MODEL_DIR='_03_models'
 

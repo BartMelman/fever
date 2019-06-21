@@ -37,6 +37,7 @@ class TFIDFDatabase:
         self.path_ids_dict_empty = None
         self.path_tf_idf_dict = None
         self.path_ids_dict = None
+        self.path_oov = None
         self.get_paths()
         
         
@@ -70,7 +71,7 @@ class TFIDFDatabase:
         self.path_ids_dict_empty = os.path.join(self.base_dir, 'ids_dict_empty.sqlite')
         self.path_tf_idf_dict = os.path.join(self.base_dir, 'tf_idf_dict.sqlite')
         self.path_ids_dict = os.path.join(self.base_dir, 'ids_dict.sqlite')
-        
+        self.path_oov = os.path.join(self.base_dir, 'oov.sqlite')
         try:
             os.makedirs(self.path_threshold_folder)    
         except FileExistsError:
@@ -132,7 +133,8 @@ class TFIDFDatabase:
         nr_wiki_pages = self.vocab.nr_wiki_pages
         method_tokenization = self.vocab.method_tokenization
         n_gram = self.vocab.n_gram
-        
+        key_error_flag = 0
+
         with SqliteDict(self.vocab.path_document_count) as dict_document_count:
             with SqliteDict(self.path_vocabulary_selected_dict) as vocabulary_selected_dict:
                 for i in tqdm(range(nr_wiki_pages), desc='fill database'):
@@ -145,7 +147,6 @@ class TFIDFDatabase:
                         tokenized_text = self.vocab.text_database.get_tokenized_title_from_id(id_wiki_page, method_tokenization)
                     else:
                         raise ValueError('source not in options', self.source)
-
                     tf_dict, nr_words_doc = count_n_grams(tokenized_text, n_gram, 'str')
                     
                     total_count_doc = self.vocab.nr_wiki_pages
@@ -153,7 +154,11 @@ class TFIDFDatabase:
                     
                     for word in tf_dict:
                         count_tf = tf_dict[word]
-                        count_doc = dict_document_count[word]
+                        try:
+                            count_doc = dict_document_count[word]
+                        except KeyError:
+                            # print('KeyError fill database', word)
+                            count_doc = 1
                         
                         tf_idf_value  = scorer.get_tf_idf(count_tf, total_count_tf, count_doc, total_count_doc)
 
@@ -166,12 +171,25 @@ class TFIDFDatabase:
                                 list_keys = list(batch_dictionary.dictionary_tf_idf.keys())
                                 for i in tqdm(range(len(list_keys)), desc='batch'):
                                     word = list_keys[i] 
-                                    
-                                    if vocabulary_selected_dict[word] == 1:
+                                    try:
+                                        if vocabulary_selected_dict[word] == 1:
+                                            tf_idf_value = batch_dictionary.dictionary_tf_idf[word]['values']
+                                            id_word = batch_dictionary.dictionary_tf_idf[word]['ids']
+                                            mydict_tf_idf[word] = mydict_tf_idf[word] + self.delimiter + tf_idf_value
+                                            mydict_ids[word] = mydict_ids[word] + self.delimiter + id_word    
+                                    except KeyError:
+                                        if word not in mydict_tf_idf:
+                                            with SqliteDict(self.path_oov) as mydict_oov:
+                                                mydict_oov[word] = True
+                                                mydict_oov.commit()
+
+                                            mydict_tf_idf[word] = self.default_first_value
+                                            mydict_ids[word] = self.default_first_value
+
                                         tf_idf_value = batch_dictionary.dictionary_tf_idf[word]['values']
                                         id_word = batch_dictionary.dictionary_tf_idf[word]['ids']
                                         mydict_tf_idf[word] = mydict_tf_idf[word] + self.delimiter + tf_idf_value
-                                        mydict_ids[word] = mydict_ids[word] + self.delimiter + id_word
+                                        mydict_ids[word] = mydict_ids[word] + self.delimiter + id_word   
                                 mydict_ids.commit()
                             mydict_tf_idf.commit()
                         # === reset dictionary === #

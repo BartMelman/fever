@@ -1,42 +1,41 @@
 import os
-from sqlitedict import SqliteDict
-import sqlite3
-import tqdm
-from tqdm import tnrange
+# from sqlitedict import SqliteDict
+# import sqlite3
+# import tqdm
+# from tqdm import tnrange
 import shutil
+import json
 
-from document import Document
+# from document import Document
 
-from utils_db import dict_save_json, dict_load_json
+# from utils_db import dict_save_json, dict_load_json
 # from tf_idf import count_n_grams
-from dictionary_batch_idf import DictionaryBatchIDF
-from vocabulary import Vocabulary, count_n_grams
+# from dictionary_batch_idf import DictionaryBatchIDF
+from vocabulary import Vocabulary
+# from vocabulary import count_n_grams
+
 from tfidf_database import TFIDFDatabase
 
-from _10_scripts._01_database.wiki_database import WikiDatabase
+# from _10_scripts._01_database.wiki_database import WikiDatabase
 
+import config
 
 if __name__ == '__main__':
-    # === constants === #
-    path_large_wiki_database = '/home/bmelman/C_disk/02_university/06_thesis/01_code/fever/_01_data/_03_database/wiki.db' 
-    # path_wiki_database = 'wiki.db'
-    table_name_wiki = 'wikipages'
-    # table_name_tf_idf = 'tf_idf'
-    # path_tf_idf_database = 'tf_idf.db'
-    # path_mydict_tf_idf = 'mydict_tf_idf.sqlite'
-    # path_mydict_ids = 'mydict_ids.sqlite'
+    # === file name === #
+    experiment_nr = 4
+    file_name = 'experiment_%.2d.json'%(experiment_nr)
+    path_experiment = os.path.join(config.ROOT, config.CONFIG_DIR, file_name)
+    print(path_experiment)
+    with open(path_experiment) as json_data_file:
+        data = json.load(json_data_file)
 
-    # === settings experiment === #
-    n_gram = 2
-    # method_tokenization = ['tokenize', 'remove_space', 'make_lower_case', 'lemmatization_get_nouns']
-    method_tokenization = ['tokenize', 'make_lower_case']
-    threshold = 0.001
-    method_tf = 'raw_count' # raw_count term_frequency
-    method_df = 'inverse_document_frequency' # 
-    delimiter = '\k'
+    # === run === #
+    vocab = Vocabulary(path_wiki_database = os.path.join(config.ROOT, data['path_large_wiki_database']), 
+        table_name_wiki = data['table_name_wiki'], n_gram = data['n_gram'],
+        method_tokenization = data['method_tokenization'], source = data['vocabulary_source'])
 
-    vocab = Vocabulary(path_large_wiki_database, table_name_wiki, n_gram, method_tokenization, 'text')
-    tf_idf_db = TFIDFDatabase(vocab, method_tf, method_df, delimiter, threshold, 'text')
+    tf_idf_db = TFIDFDatabase(vocabulary = vocab, method_tf = data['method_tf'], method_df = data['method_df'],
+        delimiter = data['delimiter'], threshold = data['threshold'], source = data['tf_idf_source'])
 
 
     
