@@ -83,7 +83,6 @@ class TFIDFDatabase:
             print("Directory " , self.base_dir ,  " already exists") 
             
     def get_vocabulary_selected_dictionary(self):
-        
         with SqliteDict(self.vocab.path_document_count) as document_count_dict:
             with SqliteDict(self.path_vocabulary_selected_dict) as vocabulary_selected_dict:
                 iter_nr = 0

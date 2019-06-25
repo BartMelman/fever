@@ -3,10 +3,10 @@
     "table_name_wiki" : "wikipages",
     "delimiter" : "\\k",
     "n_gram" : 2,
-    "threshold" : 0.01,
-    "vocabulary_source" : "title",
-    "tf_idf_source" : "title",
+    "threshold" : 0.005,
+    "vocabulary_source" : "text",
+    "tf_idf_source" : "text",
     "method_tokenization" : ["tokenize", "make_lower_case"],
-    "method_tf" : "raw_count",
+    "method_tf" : "term_frequency",
     "method_df" : "inverse_document_frequency"
 }

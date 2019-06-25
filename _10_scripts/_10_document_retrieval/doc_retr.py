@@ -22,7 +22,7 @@ import config
 
 if __name__ == '__main__':
     # === file name === #
-    experiment_nr = 4
+    experiment_nr = 7
     file_name = 'experiment_%.2d.json'%(experiment_nr)
     path_experiment = os.path.join(config.ROOT, config.CONFIG_DIR, file_name)
     print(path_experiment)

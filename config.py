@@ -2,8 +2,8 @@ import os
 from pathlib import Path
 
 # ROOT=os.path.dirname(os.getcwd())
-ROOT='/home/BartMelman/01_university/01_thesis/fever'#os.getcwd()
-# ROOT='/home/bmelman/C_disk/02_university/06_thesis/01_code/fever'#os.getcwd()
+# ROOT='/home/BartMelman/01_university/01_thesis/fever'#os.getcwd()
+ROOT='/home/bmelman/C_disk/02_university/06_thesis/01_code/fever'#os.getcwd()
 
 
 # __data_dir__ = '_01_data'

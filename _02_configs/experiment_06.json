@@ -8,5 +8,5 @@
     "tf_idf_source" : "title",
     "method_tokenization" : ["tokenize", "make_lower_case"],
     "method_tf" : "raw_count",
-    "method_df" : "inverse_document_frequency"
+    "method_df" : "constant_one"
 }
