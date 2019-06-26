@@ -3,7 +3,7 @@
     "table_name_wiki" : "wikipages",
     "delimiter" : "\\k",
     "n_gram" : 2,
-    "threshold" : 0.005,
+    "threshold" : 0.001,
     "vocabulary_source" : "text",
     "tf_idf_source" : "text",
     "method_tokenization" : ["tokenize", "make_lower_case"],

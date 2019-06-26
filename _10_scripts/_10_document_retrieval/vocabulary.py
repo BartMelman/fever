@@ -51,10 +51,10 @@ class Vocabulary:
         else:
             self.settings = {}
 
-        if os.path.isfile(self.path_word_count):
-            print('Word count count dictionary already exists')
-        else:
-            self.get_word_count()
+        # if os.path.isfile(self.path_word_count):
+        #     print('Word count count dictionary already exists')
+        # else:
+        #     self.get_word_count()
         
         # print('count total number of words')
         # with SqliteDict(self.path_word_count) as dict_word_count:
@@ -186,7 +186,8 @@ class Vocabulary:
         
         separator = ' '
         batch_size = 1000000
-        list_exception_tokens = [' ', '', ',', '.']
+        # list_exception_tokens = ['is', 'a', 'of', ',', 'and', '.', 'in', 'by', 'their', 'has', 'been', 'to', 'from', 'the', 'that', 'as', "'s", 'are', 'for', 'who', '', 'it', 'known', 'its', 'was', 'first', 'with', 'be', 'but', 'an', 'on', '-lrb-', '-rrb-', 'which', 'district', ':', '``', "''", 'one', 'national', 'united', 'states', 'at', 'this', 'county', ';', 'may', 'new', 'his', 'american', 'she', 'born', 'film', 'he', 'also', 'or', 'were', '--', 'two', 'had', 'after']
+        # list_exception_tokens = [' ', '', ',', '.']
 
         if os.path.isfile(self.path_document_count):
             print('Document count dictionary already exists')
@@ -210,13 +211,8 @@ class Vocabulary:
                 if (id_nr%batch_size == 0) or (id_nr == self.text_database.nr_rows):
                     with SqliteDict(self.path_document_count) as dict_document_count:
                         for key, value in tqdm(n_gramfdist.items(), desc='document count dictionary'):
-                            word = ' '.join(key)
-
-                            flag_exception_token = 0
-                            for exception_token in list_exception_tokens:
-                                if exception_token in key:
-                                    flag_exception_token = 1
-                            if flag_exception_token == 0:
+                            if stop_word_in_key(key) == False:
+                                word = ' '.join(key)
                                 if word in dict_document_count:
                                     dict_document_count[word] = dict_document_count[word] + value
                                 else:
@@ -227,6 +223,17 @@ class Vocabulary:
 
             self.settings['nr_n_grams'] = nr_n_grams
             dict_save_json(self.settings, self.path_settings)
+
+def stop_word_in_key(key):
+    list_exception_tokens = ['is', 'a', 'of', ',', 'and', '.', 'in', 'by', 'their', 'has', 'been', 'to', 'from', 'the', 'that', 'as', "'s", 'are', 'for', 'who', '', 'it', 'known', 'its', 'was', 'first', 'with', 'be', 'but', 'an', 'on', '-lrb-', '-rrb-', 'which', 'district', ':', '``', "''", 'one', 'national', 'united', 'states', 'at', 'this', 'county', ';', 'may', 'new', 'his', 'american', 'she', 'born', 'film', 'he', 'also', 'or', 'were', '--', 'two', 'had', 'after']
+    flag_exception_token = False
+    for exception_token in list_exception_tokens:
+        if exception_token in key:
+            flag_exception_token = True
+            break
+    return flag_exception_token
+
+
 
 def unique_values(iterable):
     it = iter(iterable)
