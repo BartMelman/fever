@@ -6,8 +6,9 @@ import os
 from tqdm import tqdm
 from tqdm import tnrange
 from sqlitedict import SqliteDict
+import spacy
 
-from text_database import TextDatabase
+from text_database import TextDatabase, Text
 from utils_db import dict_save_json, dict_load_json
 from _10_scripts._01_database.wiki_database import WikiDatabase
 
@@ -16,6 +17,10 @@ import config
 class Vocabulary:
     """A sample Employee class"""
     def __init__(self, path_wiki_database, table_name_wiki, n_gram, method_tokenization, source):
+        self.delimiter_title = '_'
+        self.delimiter_text = ' '
+        self.nlp = spacy.load('en', disable=["parser", "ner"])
+
         self.text_database = TextDatabase(path_wiki_database, table_name_wiki)
         self.nr_wiki_pages = self.text_database.nr_rows
         self.vocabulary_dict = None
@@ -91,16 +96,16 @@ class Vocabulary:
         for method in self.method_tokenization:
             if method == 'tokenize':
                 folder_name = folder_name + '_t'
-            elif method == 'remove_space':
-                folder_name = folder_name + '_rs'
-            elif method == 'remove_bracket_and_word_between':
-                folder_name = folder_name + '_rmb'
-            elif method == 'make_lower_case':
-                folder_name = folder_name + '_mlc'
-            elif method == 'lemmatization':
-                folder_name = folder_name + '_lm'
-            elif method == 'lemmatization_get_nouns':
-                folder_name = folder_name + '_lmgn'
+            elif method == 'tokenize_lemma':
+                folder_name = folder_name + '_tl'
+            elif method == 'tokenize_lemma_list_accepted':
+                folder_name = folder_name + '_tlla'
+            elif method == 'tokenize_lemma_nouns':
+                folder_name = folder_name + '_tln'
+            elif method == 'tokenize_lemma_prop_nouns':
+                folder_name = folder_name + '_tlpn'
+            elif method == 'tokenize_lemma_number':
+                folder_name = folder_name + '_tln'
             else:
                 raise ValueError('method not in method_options', method, method_options)
         
@@ -181,7 +186,8 @@ class Vocabulary:
         # - [dict] : dictionary of counts for n_grams
         
         separator = ' '
-        batch_size = 1000000
+        batch_size_pipeline = 100000
+        batch_size_sqlite =  100000
         # list_exception_tokens = ['is', 'a', 'of', ',', 'and', '.', 'in', 'by', 'their', 'has', 'been', 'to', 'from', 'the', 'that', 'as', "'s", 'are', 'for', 'who', '', 'it', 'known', 'its', 'was', 'first', 'with', 'be', 'but', 'an', 'on', '-lrb-', '-rrb-', 'which', 'district', ':', '``', "''", 'one', 'national', 'united', 'states', 'at', 'this', 'county', ';', 'may', 'new', 'his', 'american', 'she', 'born', 'film', 'he', 'also', 'or', 'were', '--', 'two', 'had', 'after']
         # list_exception_tokens = [' ', '', ',', '.']
 
@@ -190,20 +196,35 @@ class Vocabulary:
         else:     
             nr_n_grams = 0 # nr of different n-grams
             n_gramfdist = FreqDist()
+            text_list = []
+
             for id_nr in tqdm(range(1, self.text_database.nr_rows+1), desc='document count'):
+                # iterate through id_list
                 if self.source == 'text':
-                    tokenized_text = self.text_database.get_tokenized_text_from_id(id_nr, self.method_tokenization)
+                    text = self.text_database.wiki_database.get_text_from_id(id_nr)
                 elif self.source == 'title':
-                    tokenized_text = self.text_database.get_tokenized_title_from_id(id_nr, self.method_tokenization)
+                    text = self.text_database.wiki_database.get_title_from_id(id_nr)
+                    text = text.replace(self.delimiter_title, self.delimiter_text)
                 else:
                     raise ValueError('source not in options', self.source)
+                if text != '':
+                    text_list.append(text)
 
-                n_gram_text = ngrams(tokenized_text, self.n_gram)
-                n_gram_text_unique = unique_values(sorted(n_gram_text))
+                self.text_database.wiki_database.get_text_from_id(id_nr)
 
-                n_gramfdist.update(n_gram_text_unique)
+                # 
+                if (id_nr%batch_size_pipeline == 0) or (id_nr == self.nr_wiki_pages):
+                    for doc in tqdm(self.nlp.pipe(iter_phrases(text_list)), desc='pipeline', total = len(text_list)):
+                        text_class = Text(doc)
+                        tokenized_text = text_class.process(self.method_tokenization)
 
-                if (id_nr%batch_size == 0) or (id_nr == self.nr_wiki_pages):
+                        n_gram_text = ngrams(tokenized_text, self.n_gram)
+                        n_gram_text_unique = unique_values(sorted(n_gram_text))
+
+                        n_gramfdist.update(n_gram_text_unique)
+                    text_list = []
+
+                if (id_nr%batch_size_sqlite == 0) or (id_nr == self.nr_wiki_pages):
                     with SqliteDict(self.path_document_count) as dict_document_count:
                         for key, value in tqdm(n_gramfdist.items(), desc='document count dictionary'):
                             if stop_word_in_key(key) == False:
@@ -228,6 +249,9 @@ def stop_word_in_key(key):
             break
     return flag_exception_token
 
+def iter_phrases(text_list):
+    for text in text_list:
+        yield text
 
 
 def unique_values(iterable):

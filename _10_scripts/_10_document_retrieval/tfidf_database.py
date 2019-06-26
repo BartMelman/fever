@@ -5,6 +5,7 @@ from tqdm import tqdm
 from tqdm import tnrange
 import shutil
 import math
+import spacy
 
 from document import Document
 
@@ -13,6 +14,7 @@ from utils_db import dict_save_json, dict_load_json
 from dictionary_batch_idf import DictionaryBatchIDF
 from vocabulary import Vocabulary, count_n_grams, stop_word_in_key
 from _10_scripts._01_database.wiki_database import WikiDatabase
+from text_database import Text
 
 
 class TFIDFDatabase:
@@ -121,6 +123,9 @@ class TFIDFDatabase:
                 
     def fill_database(self):
         
+        batch_size_sqlite = 100000
+        batch_size_spacy = 100000
+
         shutil.copyfile(self.path_tf_idf_dict_empty, self.path_tf_idf_dict)  
         shutil.copyfile(self.path_ids_dict_empty, self.path_ids_dict)
         
@@ -134,34 +139,52 @@ class TFIDFDatabase:
         key_error_flag = 0
 
         with SqliteDict(self.vocab.path_document_count) as dict_document_count:
+            text_dict = {}
             for i in tqdm(range(nr_wiki_pages), desc='fill database'):
                 id_wiki_page = i + 1
-    #             title = vocab.text_database.wiki_database.get_title_from_id(id_nr)
-    #             id_wiki_page = vocab.title_2_id_dict[title]
+                # iterate through id list
                 if self.source == 'text':
-                    tokenized_text = self.vocab.text_database.get_tokenized_text_from_id(id_wiki_page, method_tokenization)
+                    text = self.text_database.wiki_database.get_text_from_id(id_nr)
                 elif self.source == 'title':
-                    tokenized_text = self.vocab.text_database.get_tokenized_title_from_id(id_wiki_page, method_tokenization)
+                    text = self.text_database.wiki_database.get_title_from_id(id_nr)
+                    text = text.replace(self.delimiter_title, self.delimiter_text)
                 else:
                     raise ValueError('source not in options', self.source)
-                tf_dict, nr_words_doc = count_n_grams(tokenized_text, n_gram, 'str')
-                
-                total_count_doc = self.vocab.nr_wiki_pages
-                total_count_tf = nr_words_doc
-                
-                for word in tf_dict:
-                    count_tf = tf_dict[word]
-                    try:
-                        count_doc = dict_document_count[word]
-                    except KeyError:
-                        # print('KeyError fill database', word)
-                        count_doc = 1
-                
-                    if count_doc < int(self.threshold * self.nr_wiki_pages):
-                        tf_idf_value  = scorer.get_tf_idf(count_tf, total_count_tf, count_doc, total_count_doc)
-                        batch_dictionary.update(word, id_wiki_page, tf_idf_value)
+                if text != '':
+                    text_dict[id_wiki_page] = text
+                    # text_list.append(text)
 
-                if (i%self.batch_size == 0) or (i == self.vocab.nr_wiki_pages - 1):
+                id_list = list(text_dict.keys())
+                j=0
+
+                # batch dictionary
+                if (id_nr%batch_size_spacy == 0) or (id_nr == self.nr_wiki_pages):
+                    for doc in tqdm(self.nlp.pipe(iter_phrases(text_dict.values())), desc='pipeline', total = len(text_list)):
+                        text_class = Text(doc)
+                        tokenized_text = text_class.process(self.method_tokenization)
+
+                        tf_dict, nr_words_doc = count_n_grams(tokenized_text, n_gram, 'str')
+
+                        total_count_doc = self.vocab.nr_wiki_pages
+                        total_count_tf = nr_words_doc
+                        
+                        for word in tf_dict:
+                            count_tf = tf_dict[word]
+                            try:
+                                count_doc = dict_document_count[word]
+                            except KeyError:
+                                # print('KeyError fill database', word)
+                                count_doc = 1
+                        
+                            if count_doc < int(self.threshold * self.nr_wiki_pages):
+                                tf_idf_value  = scorer.get_tf_idf(count_tf, total_count_tf, count_doc, total_count_doc)
+                                batch_dictionary.update(word, id_list[j], tf_idf_value)
+                        
+                        j += 1
+                    text_dict = {}
+
+                # write table
+                if (i%batch_size_sqlite == 0) or (i == self.vocab.nr_wiki_pages - 1):
                     # === write to table === #
                     with SqliteDict(self.path_tf_idf_dict) as mydict_tf_idf:
                         with SqliteDict(self.path_ids_dict) as mydict_ids:

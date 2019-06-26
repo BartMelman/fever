@@ -4,10 +4,10 @@
     "delimiter" : "\\k",
     "n_gram" : 1,
     "threshold" : 0.01,
-    "vocabulary_source" : "title",
-    "tf_idf_source" : "title",
-    "method_tokenization" : ["tokenize", "make_lower_case"],
-    "method_tf" : "raw_count",
+    "vocabulary_source" : "text",
+    "tf_idf_source" : "text",
+    "method_tokenization" : ["tokenize_lemma_prop_nouns"],
+    "method_tf" : "term_frequency",
     "method_df" : "inverse_document_frequency"
 }
 
