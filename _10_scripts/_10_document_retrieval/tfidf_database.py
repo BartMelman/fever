@@ -12,7 +12,7 @@ from document import Document
 from utils_db import dict_save_json, dict_load_json
 # from tf_idf import count_n_grams
 from dictionary_batch_idf import DictionaryBatchIDF
-from vocabulary import Vocabulary, count_n_grams, stop_word_in_key
+from vocabulary import Vocabulary, count_n_grams, stop_word_in_key, iter_phrases
 from _10_scripts._01_database.wiki_database import WikiDatabase
 from text_database import Text
 
@@ -20,6 +20,8 @@ from text_database import Text
 class TFIDFDatabase:
     """A sample Employee class"""
     def __init__(self, vocabulary, method_tf, method_df, delimiter, threshold, source):
+        self.delimiter_title = '_'
+        self.delimiter_text = ' '
         self.default_first_value = 'F'
         self.vocab = vocabulary
         self.delimiter = delimiter
@@ -124,7 +126,7 @@ class TFIDFDatabase:
     def fill_database(self):
         
         batch_size_sqlite = 100000
-        batch_size_spacy = 100000
+        batch_size_spacy = 50000
 
         shutil.copyfile(self.path_tf_idf_dict_empty, self.path_tf_idf_dict)  
         shutil.copyfile(self.path_ids_dict_empty, self.path_ids_dict)
@@ -140,13 +142,12 @@ class TFIDFDatabase:
 
         with SqliteDict(self.vocab.path_document_count) as dict_document_count:
             text_dict = {}
-            for i in tqdm(range(nr_wiki_pages), desc='fill database'):
-                id_wiki_page = i + 1
+            for id_wiki_page in tqdm(range(1, self.nr_wiki_pages + 1), desc='fill database'):
                 # iterate through id list
                 if self.source == 'text':
-                    text = self.text_database.wiki_database.get_text_from_id(id_nr)
+                    text = self.vocab.text_database.wiki_database.get_text_from_id(id_wiki_page)
                 elif self.source == 'title':
-                    text = self.text_database.wiki_database.get_title_from_id(id_nr)
+                    text = self.vocab.text_database.wiki_database.get_title_from_id(id_wiki_page)
                     text = text.replace(self.delimiter_title, self.delimiter_text)
                 else:
                     raise ValueError('source not in options', self.source)
@@ -158,10 +159,10 @@ class TFIDFDatabase:
                 j=0
 
                 # batch dictionary
-                if (id_nr%batch_size_spacy == 0) or (id_nr == self.nr_wiki_pages):
-                    for doc in tqdm(self.nlp.pipe(iter_phrases(text_dict.values())), desc='pipeline', total = len(text_list)):
+                if (id_wiki_page%batch_size_spacy == 0) or (id_wiki_page == self.nr_wiki_pages):
+                    for doc in tqdm(self.vocab.nlp.pipe(iter_phrases(text_dict.values())), desc='pipeline', total = len(id_list)):
                         text_class = Text(doc)
-                        tokenized_text = text_class.process(self.method_tokenization)
+                        tokenized_text = text_class.process(self.vocab.method_tokenization)
 
                         tf_dict, nr_words_doc = count_n_grams(tokenized_text, n_gram, 'str')
 
@@ -184,7 +185,7 @@ class TFIDFDatabase:
                     text_dict = {}
 
                 # write table
-                if (i%batch_size_sqlite == 0) or (i == self.vocab.nr_wiki_pages - 1):
+                if (id_wiki_page%batch_size_sqlite == 0) or (id_wiki_page == self.vocab.nr_wiki_pages - 1):
                     # === write to table === #
                     with SqliteDict(self.path_tf_idf_dict) as mydict_tf_idf:
                         with SqliteDict(self.path_ids_dict) as mydict_ids:
