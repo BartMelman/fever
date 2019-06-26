@@ -76,21 +76,17 @@ class Text:
     def tokenize_lemma(self):
         return [word.lemma_ for word in self.text]
 
-    def tokenize_lemma_list_accepted(self, text):
-        doc = self.nlp(text)
-        return [word.lemma_ for word in doc if word.pos_ in self.list_accepted_tags]
+    def tokenize_lemma_list_accepted(self):
+        return [word.lemma_ for word in self.text if word.pos_ in self.list_accepted_tags]
 
-    def tokenize_lemma_nouns(self, text):
-        doc = self.nlp(text)
-        return [word.lemma_ for word in doc if word.pos_ in self.list_nouns]
+    def tokenize_lemma_nouns(self):
+        return [word.lemma_ for word in self.text if word.pos_ in self.list_nouns]
 
-    def tokenize_lemma_prop_nouns(self, text):
-        doc = self.nlp(text)
-        return [word.lemma_ for word in doc if word.pos_ in self.list_prop_noun]
+    def tokenize_lemma_prop_nouns(self):
+        return [word.lemma_ for word in self.text if word.pos_ in self.list_prop_noun]
 
-    def tokenize_lemma_number(self, text):
-        doc = self.nlp(text)
-        return [word.lemma_ for word in doc if word.pos_ in self.list_num]
+    def tokenize_lemma_number(self):
+        return [word.lemma_ for word in self.text if word.pos_ in self.list_num]
 
 
 #     def tokenize(self, text):
