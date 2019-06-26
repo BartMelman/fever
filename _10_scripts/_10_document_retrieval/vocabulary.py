@@ -141,6 +141,8 @@ class Vocabulary:
         # - [dict] : dictionary of counts for n_grams
         separator = ' '
         batch_size = 3500000
+        list_exception_tokens = [' ', '', ',', '.']
+
         if os.path.isfile(self.path_word_count):
             print('Word count dictionary already exists')
         else:  
@@ -160,10 +162,15 @@ class Vocabulary:
                     with SqliteDict(self.path_word_count) as dict_words:
                         for key, value in tqdm(n_gramfdist.items(), desc='word count dictionary'):
                             word = ' '.join(key)
-                            if word in dict_words:
-                                dict_words[word] = dict_words[word] + value
-                            else:
-                                dict_words[word] = value
+                            flag_exception_token = 0
+                            for exception_token in list_exception_tokens:
+                                if exception_token in key:
+                                    flag_exception_token = 1
+                            if flag_exception_token == 0:
+                                if word in dict_words:
+                                    dict_words[word] = dict_words[word] + value
+                                else:
+                                    dict_words[word] = value
                         dict_words.commit()
                     n_gramfdist = FreqDist()
             
@@ -179,6 +186,8 @@ class Vocabulary:
         
         separator = ' '
         batch_size = 1000000
+        list_exception_tokens = [' ', '', ',', '.']
+
         if os.path.isfile(self.path_document_count):
             print('Document count dictionary already exists')
         else:     
@@ -202,11 +211,17 @@ class Vocabulary:
                     with SqliteDict(self.path_document_count) as dict_document_count:
                         for key, value in tqdm(n_gramfdist.items(), desc='document count dictionary'):
                             word = ' '.join(key)
-                            if word in dict_document_count:
-                                dict_document_count[word] = dict_document_count[word] + value
-                            else:
-                                dict_document_count[' '.join(key)] = value
-                                nr_n_grams += 1
+
+                            flag_exception_token = 0
+                            for exception_token in list_exception_tokens:
+                                if exception_token in key:
+                                    flag_exception_token = 1
+                            if flag_exception_token == 0:
+                                if word in dict_document_count:
+                                    dict_document_count[word] = dict_document_count[word] + value
+                                else:
+                                    dict_document_count[' '.join(key)] = value
+                                    nr_n_grams += 1
                         dict_document_count.commit()
                     n_gramfdist = FreqDist()
 
@@ -232,16 +247,24 @@ def count_n_grams(tokenized_text, n_gram, output_format):
     
     output_format_options = ['tuple','str']
     separator = ' '
+    list_exception_tokens = [' ', '', ',', '.']
+
     n_gramfdist = FreqDist()
     n_gramfdist.update(ngrams(tokenized_text, n_gram))
     dictionary = dict(n_gramfdist)
+
     if output_format not in output_format_options:
         raise ValueError('output_format not in output_format_options', output_format, output_format_options)
     
     if output_format == 'str':
         new_dictionary = {}
         for key in dictionary.keys():
-            new_dictionary[' '.join(key)] = dictionary[key]
+            flag_exception_token = 0
+            for exception_token in list_exception_tokens:
+                if exception_token in key:
+                    flag_exception_token = 1
+            if flag_exception_token == 0:
+                new_dictionary[' '.join(key)] = dictionary[key]
         dictionary = new_dictionary
     
     nr_words = sum(list(dictionary.values()))

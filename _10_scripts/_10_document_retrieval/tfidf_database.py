@@ -15,7 +15,6 @@ from vocabulary import Vocabulary, count_n_grams
 from _10_scripts._01_database.wiki_database import WikiDatabase
 
 
-
 class TFIDFDatabase:
     """A sample Employee class"""
     def __init__(self, vocabulary, method_tf, method_df, delimiter, threshold, source):
@@ -40,11 +39,10 @@ class TFIDFDatabase:
         self.path_oov = None
         self.get_paths()
         
-        
-        if os.path.isfile(self.path_vocabulary_selected_dict):
-            print('selected vocabulary dictionary already exists')
-        else:
-            self.get_vocabulary_selected_dictionary()
+        # if os.path.isfile(self.path_vocabulary_selected_dict):
+        #     print('selected vocabulary dictionary already exists')
+        # else:
+        #     self.get_vocabulary_selected_dictionary()
 
         if not(os.path.isfile(self.path_tf_idf_dict_empty) and os.path.isfile(self.path_ids_dict_empty)):
             print('construct empty database')
@@ -82,23 +80,23 @@ class TFIDFDatabase:
         except FileExistsError:
             print("Directory " , self.base_dir ,  " already exists") 
             
-    def get_vocabulary_selected_dictionary(self):
-        with SqliteDict(self.vocab.path_document_count) as document_count_dict:
-            with SqliteDict(self.path_vocabulary_selected_dict) as vocabulary_selected_dict:
-                iter_nr = 0
-                batch_size = 100000
-                for word, value in tqdm(document_count_dict.items(), desc='vocabulary selected'):
-                    if (value/float(self.nr_wiki_pages)) < self.threshold:
-                        vocabulary_selected_dict[word] = 1
-                    else: 
-                        vocabulary_selected_dict[word] = 0
+    # def get_vocabulary_selected_dictionary(self):
+    #     with SqliteDict(self.vocab.path_document_count) as document_count_dict:
+    #         with SqliteDict(self.path_vocabulary_selected_dict) as vocabulary_selected_dict:
+    #             iter_nr = 0
+    #             batch_size = 100000
+    #             for word, value in tqdm(document_count_dict.items(), desc='vocabulary selected'):
+    #                 if (value/float(self.nr_wiki_pages)) < self.threshold:
+    #                     vocabulary_selected_dict[word] = 1
+    #                 else: 
+    #                     vocabulary_selected_dict[word] = 0
 
-                    iter_nr+=1
+    #                 iter_nr+=1
 
-                    if iter_nr==batch_size:
-                        iter_nr = 0
-                        vocabulary_selected_dict.commit()         
-                vocabulary_selected_dict.commit()            
+    #                 if iter_nr==batch_size:
+    #                     iter_nr = 0
+    #                     vocabulary_selected_dict.commit()         
+    #             vocabulary_selected_dict.commit()            
         
     def construct_empty_database(self):
         # description: construct the database with as rows all the possible words. We only enter the 'F' as first element.
@@ -109,12 +107,13 @@ class TFIDFDatabase:
                     iter_nr = 0
                     batch_size = 100000
                     for key, value in tqdm(document_count_dict.items(), desc='empty database', total = self.vocab.settings['nr_n_grams']):
-                        mydict_tf_idf[key] = self.default_first_value
-                        mydict_ids[key] = self.default_first_value
+                        if value < int(self.threshold * self.nr_wiki_pages):
+                            mydict_tf_idf[key] = self.default_first_value
+                            mydict_ids[key] = self.default_first_value
 
-                        iter_nr+=1
+                        iter_nr += 1
 
-                        if iter_nr==batch_size:
+                        if iter_nr == batch_size:
                             iter_nr = 0
                             mydict_tf_idf.commit()
                 mydict_ids.commit()
@@ -135,64 +134,63 @@ class TFIDFDatabase:
         key_error_flag = 0
 
         with SqliteDict(self.vocab.path_document_count) as dict_document_count:
-            with SqliteDict(self.path_vocabulary_selected_dict) as vocabulary_selected_dict:
-                for i in tqdm(range(nr_wiki_pages), desc='fill database'):
-                    id_wiki_page = i + 1
-        #             title = vocab.text_database.wiki_database.get_title_from_id(id_nr)
-        #             id_wiki_page = vocab.title_2_id_dict[title]
-                    if self.source == 'text':
-                        tokenized_text = self.vocab.text_database.get_tokenized_text_from_id(id_wiki_page, method_tokenization)
-                    elif self.source == 'title':
-                        tokenized_text = self.vocab.text_database.get_tokenized_title_from_id(id_wiki_page, method_tokenization)
-                    else:
-                        raise ValueError('source not in options', self.source)
-                    tf_dict, nr_words_doc = count_n_grams(tokenized_text, n_gram, 'str')
-                    
-                    total_count_doc = self.vocab.nr_wiki_pages
-                    total_count_tf = nr_words_doc
-                    
-                    for word in tf_dict:
-                        count_tf = tf_dict[word]
-                        try:
-                            count_doc = dict_document_count[word]
-                        except KeyError:
-                            # print('KeyError fill database', word)
-                            count_doc = 1
-                        
+            for i in tqdm(range(nr_wiki_pages), desc='fill database'):
+                id_wiki_page = i + 1
+    #             title = vocab.text_database.wiki_database.get_title_from_id(id_nr)
+    #             id_wiki_page = vocab.title_2_id_dict[title]
+                if self.source == 'text':
+                    tokenized_text = self.vocab.text_database.get_tokenized_text_from_id(id_wiki_page, method_tokenization)
+                elif self.source == 'title':
+                    tokenized_text = self.vocab.text_database.get_tokenized_title_from_id(id_wiki_page, method_tokenization)
+                else:
+                    raise ValueError('source not in options', self.source)
+                tf_dict, nr_words_doc = count_n_grams(tokenized_text, n_gram, 'str')
+                
+                total_count_doc = self.vocab.nr_wiki_pages
+                total_count_tf = nr_words_doc
+                
+                for word in tf_dict:
+                    count_tf = tf_dict[word]
+                    try:
+                        count_doc = dict_document_count[word]
+                    except KeyError:
+                        # print('KeyError fill database', word)
+                        count_doc = 1
+                
+                    if count_doc < int(self.threshold * self.nr_wiki_pages):
                         tf_idf_value  = scorer.get_tf_idf(count_tf, total_count_tf, count_doc, total_count_doc)
-
                         batch_dictionary.update(word, id_wiki_page, tf_idf_value)
 
-                    if (i%self.batch_size == 0) or (i == self.vocab.nr_wiki_pages - 1):
-                        # === write to table === #
-                        with SqliteDict(self.path_tf_idf_dict) as mydict_tf_idf:
-                            with SqliteDict(self.path_ids_dict) as mydict_ids:
-                                list_keys = list(batch_dictionary.dictionary_tf_idf.keys())
-                                for i in tqdm(range(len(list_keys)), desc='batch'):
-                                    word = list_keys[i] 
-                                    try:
-                                        if vocabulary_selected_dict[word] == 1:
-                                            tf_idf_value = batch_dictionary.dictionary_tf_idf[word]['values']
-                                            id_word = batch_dictionary.dictionary_tf_idf[word]['ids']
-                                            mydict_tf_idf[word] = mydict_tf_idf[word] + self.delimiter + tf_idf_value
-                                            mydict_ids[word] = mydict_ids[word] + self.delimiter + id_word    
-                                    except KeyError:
-                                        if word not in mydict_tf_idf:
-                                            with SqliteDict(self.path_oov) as mydict_oov:
-                                                mydict_oov[word] = True
-                                                mydict_oov.commit()
+                if (i%self.batch_size == 0) or (i == self.vocab.nr_wiki_pages - 1):
+                    # === write to table === #
+                    with SqliteDict(self.path_tf_idf_dict) as mydict_tf_idf:
+                        with SqliteDict(self.path_ids_dict) as mydict_ids:
+                            list_keys = list(batch_dictionary.dictionary_tf_idf.keys())
+                            for i in tqdm(range(len(list_keys)), desc='batch'):
+                                word = list_keys[i] 
+                                try:
+                                    tf_idf_value = batch_dictionary.dictionary_tf_idf[word]['values']
+                                    id_word = batch_dictionary.dictionary_tf_idf[word]['ids']
+                                    mydict_tf_idf[word] = mydict_tf_idf[word] + self.delimiter + tf_idf_value
+                                    mydict_ids[word] = mydict_ids[word] + self.delimiter + id_word    
+                                except KeyError:
+                                    print('keyerror')
+                                    if word not in mydict_tf_idf:
+                                        with SqliteDict(self.path_oov) as mydict_oov:
+                                            mydict_oov[word] = True
+                                            mydict_oov.commit()
 
-                                            mydict_tf_idf[word] = self.default_first_value
-                                            mydict_ids[word] = self.default_first_value
+                                        mydict_tf_idf[word] = self.default_first_value
+                                        mydict_ids[word] = self.default_first_value
 
-                                        tf_idf_value = batch_dictionary.dictionary_tf_idf[word]['values']
-                                        id_word = batch_dictionary.dictionary_tf_idf[word]['ids']
-                                        mydict_tf_idf[word] = mydict_tf_idf[word] + self.delimiter + tf_idf_value
-                                        mydict_ids[word] = mydict_ids[word] + self.delimiter + id_word   
-                                mydict_ids.commit()
-                            mydict_tf_idf.commit()
-                        # === reset dictionary === #
-                        batch_dictionary.reset()
+                                    tf_idf_value = batch_dictionary.dictionary_tf_idf[word]['values']
+                                    id_word = batch_dictionary.dictionary_tf_idf[word]['ids']
+                                    mydict_tf_idf[word] = mydict_tf_idf[word] + self.delimiter + tf_idf_value
+                                    mydict_ids[word] = mydict_ids[word] + self.delimiter + id_word   
+                            mydict_ids.commit()
+                        mydict_tf_idf.commit()
+                    # === reset dictionary === #
+                    batch_dictionary.reset()
 
 class TFIDF(object):
     # https://en.wikipedia.org/wiki/Tf%E2%80%93idf
