@@ -161,12 +161,8 @@ class Vocabulary:
                 if (id_nr%batch_size==0) or (id_nr == self.text_database.nr_rows):
                     with SqliteDict(self.path_word_count) as dict_words:
                         for key, value in tqdm(n_gramfdist.items(), desc='word count dictionary'):
-                            word = ' '.join(key)
-                            flag_exception_token = 0
-                            for exception_token in list_exception_tokens:
-                                if exception_token in key:
-                                    flag_exception_token = 1
-                            if flag_exception_token == 0:
+                            if stop_word_in_key(key) == False:
+                                word = ' '.join(key)
                                 if word in dict_words:
                                     dict_words[word] = dict_words[word] + value
                                 else:
@@ -202,13 +198,12 @@ class Vocabulary:
                 else:
                     raise ValueError('source not in options', self.source)
 
-                # tokenized_text_reduced = list(set(tokenized_text))
                 n_gram_text = ngrams(tokenized_text, self.n_gram)
                 n_gram_text_unique = unique_values(sorted(n_gram_text))
 
                 n_gramfdist.update(n_gram_text_unique)
 
-                if (id_nr%batch_size == 0) or (id_nr == self.text_database.nr_rows):
+                if (id_nr%batch_size == 0) or (id_nr == self.nr_wiki_pages):
                     with SqliteDict(self.path_document_count) as dict_document_count:
                         for key, value in tqdm(n_gramfdist.items(), desc='document count dictionary'):
                             if stop_word_in_key(key) == False:
@@ -254,7 +249,6 @@ def count_n_grams(tokenized_text, n_gram, output_format):
     
     output_format_options = ['tuple','str']
     separator = ' '
-    list_exception_tokens = [' ', '', ',', '.']
 
     n_gramfdist = FreqDist()
     n_gramfdist.update(ngrams(tokenized_text, n_gram))
@@ -266,11 +260,7 @@ def count_n_grams(tokenized_text, n_gram, output_format):
     if output_format == 'str':
         new_dictionary = {}
         for key in dictionary.keys():
-            flag_exception_token = 0
-            for exception_token in list_exception_tokens:
-                if exception_token in key:
-                    flag_exception_token = 1
-            if flag_exception_token == 0:
+            if stop_word_in_key(key) == False:
                 new_dictionary[' '.join(key)] = dictionary[key]
         dictionary = new_dictionary
     

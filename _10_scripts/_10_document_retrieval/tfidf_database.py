@@ -11,7 +11,7 @@ from document import Document
 from utils_db import dict_save_json, dict_load_json
 # from tf_idf import count_n_grams
 from dictionary_batch_idf import DictionaryBatchIDF
-from vocabulary import Vocabulary, count_n_grams
+from vocabulary import Vocabulary, count_n_grams, stop_word_in_key
 from _10_scripts._01_database.wiki_database import WikiDatabase
 
 
