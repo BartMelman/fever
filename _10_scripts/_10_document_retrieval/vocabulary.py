@@ -210,9 +210,7 @@ class Vocabulary:
                 if text != '':
                     text_list.append(text)
 
-                self.text_database.wiki_database.get_text_from_id(id_nr)
-
-                # 
+                # iterate through 
                 if (id_nr%batch_size_pipeline == 0) or (id_nr == self.nr_wiki_pages):
                     for doc in tqdm(self.nlp.pipe(iter_phrases(text_list)), desc='pipeline', total = len(text_list)):
                         text_class = Text(doc)

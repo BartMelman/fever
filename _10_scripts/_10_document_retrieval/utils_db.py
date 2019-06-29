@@ -5,31 +5,7 @@ import os
 import json
 import pickle 
 
-class Claim:
-    def __init__(self, claim_dictionary):
-        self.id = claim_dictionary['id']
-        self.verifiable = claim_dictionary['verifiable']
-        self.label = claim_dictionary['label']
-        self.claim = claim_dictionary['claim']
-        self.claim_without_dot = self.claim[:-1]
-        self.evidence = claim_dictionary['evidence']
-        # self.nlp = nlp
 
-        # if 'docs_selected' in claim_dictionary:
-        #     self.docs_selected = claim_dictionary['docs_selected']
-    
-class ClaimDocTokenizer:
-    def __init__(self, doc):
-        self.doc = doc
-    def get_tokenized_claim(self, method_tokenization):
-        # claim_without_dot = self.claim[:-1]  # remove . at the end
-        # doc = self.nlp(claim_without_dot)
-        text = Text(self.doc)
-        tokenized_claim = text.process(method_tokenization)
-        return tokenized_claim
-    def get_n_grams(self, method_tokenization, n_gram):
-        return count_n_grams(self.get_tokenized_claim(method_tokenization), n_gram, 'str')
-        
 def num_files_in_directory(path_directory):
     # description: find the number of files in directory
     # input: path to directory
