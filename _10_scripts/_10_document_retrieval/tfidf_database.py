@@ -74,6 +74,8 @@ class TFIDFDatabase:
         self.path_tf_idf_dict = os.path.join(self.base_dir, 'tf_idf_dict.sqlite')
         self.path_ids_dict = os.path.join(self.base_dir, 'ids_dict.sqlite')
         self.path_oov = os.path.join(self.base_dir, 'oov.sqlite')
+        self.path_total_tf_idf_dict = os.path.join(self.base_dir, 'title_total_tf_idf.sqlite')
+
         try:
             os.makedirs(self.path_threshold_folder)    
         except FileExistsError:
@@ -140,6 +142,8 @@ class TFIDFDatabase:
         n_gram = self.vocab.n_gram
         key_error_flag = 0
 
+        total_tf_idf_dict = {}
+
         with SqliteDict(self.vocab.path_document_count) as dict_document_count:
             text_dict = {}
             for id_wiki_page in tqdm(range(1, self.nr_wiki_pages + 1), desc='fill database'):
@@ -157,6 +161,9 @@ class TFIDFDatabase:
 
                 id_list = list(text_dict.keys())
                 j=0
+                # total tf idf
+
+                
 
                 # batch dictionary
                 if (id_wiki_page%batch_size_spacy == 0) or (id_wiki_page == self.nr_wiki_pages):
@@ -169,6 +176,7 @@ class TFIDFDatabase:
                         total_count_doc = self.vocab.nr_wiki_pages
                         total_count_tf = nr_words_doc
                         
+                        tf_idf_document = 0.0
                         for word in tf_dict:
                             count_tf = tf_dict[word]
                             try:
@@ -180,7 +188,8 @@ class TFIDFDatabase:
                             if count_doc < int(self.threshold * self.nr_wiki_pages):
                                 tf_idf_value  = scorer.get_tf_idf(count_tf, total_count_tf, count_doc, total_count_doc)
                                 batch_dictionary.update(word, id_list[j], tf_idf_value)
-                        
+                                tf_idf_document += tf_idf_value
+                        total_tf_idf_dict[id_list[j]] = tf_idf_document
                         j += 1
                     text_dict = {}
 
@@ -215,6 +224,13 @@ class TFIDFDatabase:
                         mydict_tf_idf.commit()
                     # === reset dictionary === #
                     batch_dictionary.reset()
+
+                    if self.source == 'title':
+                        with SqliteDict(self.path_total_tf_idf_dict) as mydict_total_tf_idf:
+                            for k, tf_idf_total in tqdm(total_tf_idf_dict.items(), desc='total title database', total = len(total_tf_idf_dict)):
+                                mydict_total_tf_idf[k] = tf_idf_total
+                            mydict_total_tf_idf.commit()
+                            total_tf_idf_dict = {}
 
 class TFIDF(object):
     # https://en.wikipedia.org/wiki/Tf%E2%80%93idf

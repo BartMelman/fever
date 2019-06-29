@@ -5,6 +5,31 @@ import os
 import json
 import pickle 
 
+class Claim:
+    def __init__(self, claim_dictionary):
+        self.id = claim_dictionary['id']
+        self.verifiable = claim_dictionary['verifiable']
+        self.label = claim_dictionary['label']
+        self.claim = claim_dictionary['claim']
+        self.claim_without_dot = self.claim[:-1]
+        self.evidence = claim_dictionary['evidence']
+        # self.nlp = nlp
+
+        # if 'docs_selected' in claim_dictionary:
+        #     self.docs_selected = claim_dictionary['docs_selected']
+    
+class ClaimDocTokenizer:
+    def __init__(self, doc):
+        self.doc = doc
+    def get_tokenized_claim(self, method_tokenization):
+        # claim_without_dot = self.claim[:-1]  # remove . at the end
+        # doc = self.nlp(claim_without_dot)
+        text = Text(self.doc)
+        tokenized_claim = text.process(method_tokenization)
+        return tokenized_claim
+    def get_n_grams(self, method_tokenization, n_gram):
+        return count_n_grams(self.get_tokenized_claim(method_tokenization), n_gram, 'str')
+        
 def num_files_in_directory(path_directory):
     # description: find the number of files in directory
     # input: path to directory
@@ -13,6 +38,20 @@ def num_files_in_directory(path_directory):
     number_of_files = len([item for item in os.listdir(path_directory) if os.path.isfile(os.path.join(path_directory, item))])
 
     return number_of_files
+
+# def write_jsonl(filename, dic_list):
+#     # description: only use for wikipedia dump
+#     output_file = open(filename, 'w', encoding='utf-8')
+#     for dic in dic_list:
+#         json.dump(dic, output_file) 
+#         output_file.write("\n")
+        
+def write_jsonl(filename, file):
+    # description: write a list of dictionaries in utf-8 format
+    with open(filename, encoding='utf-8', mode='w') as outfile:
+        for line in file:
+            json.dump(line, outfile, ensure_ascii=False)
+            outfile.write("\n")
 
 def load_jsonl(filename):
     # description: only use for wikipedia dump

@@ -3,16 +3,18 @@ import json
 from sqlitedict import SqliteDict
 import shutil
 from tqdm import tqdm
+import spacy
 
-from utils_db import dict_save_json, dict_load_json, load_jsonl, dict_save_json
+from utils_db import dict_save_json, dict_load_json, load_jsonl, dict_save_json, write_jsonl
 from text_database import TextDatabase, Text
-from vocabulary import Vocabulary
+from vocabulary import Vocabulary, iter_phrases
 from vocabulary import count_n_grams
 from tfidf_database import TFIDFDatabase
+from utils_doc_results import add_score_to_results, Claim, ClaimDocTokenizer
 
 import config
-    
-def get_selection(path_predicted_documents, K, tf_idf_db, claim_data_set):
+
+def get_selection(path_predicted_documents, K, tf_idf_db, claim_data_set, nlp):
     # description: 
     # input
     #   - path_predicted_documents: 
@@ -38,13 +40,18 @@ def get_selection(path_predicted_documents, K, tf_idf_db, claim_data_set):
         path_dev_set = os.path.join(config.ROOT, config.DATA_DIR, config.RAW_DATA_DIR, claim_data_set + ".jsonl")
         results = load_jsonl(path_dev_set)
         
-        # === compute selection === #
-        for i in tqdm(range(len(results)), desc='get_selection'):
+        batch_sln = 10000
+        list_claims = []
+        for i in range(len(results)):
             claim = Claim(results[i])
+            list_claims.append(claim.claim_without_dot)
+
+        i = 0
+        for doc in tqdm(nlp.pipe(iter_phrases(list_claims)), desc='pipeline', total = len(list_claims)):
+            claim_doc_tokenizer = ClaimDocTokenizer(doc)
+            n_grams, nr_words = claim_doc_tokenizer.get_n_grams(method_tokenization, tf_idf_db.vocab.n_gram)
 
             dictionary = {}
-
-            n_grams, nr_words = claim.get_n_grams(method_tokenization, tf_idf_db.vocab.n_gram)
 
             for word in n_grams:
                 try:
@@ -71,10 +78,11 @@ def get_selection(path_predicted_documents, K, tf_idf_db, claim_data_set):
             selected_ids = [keys_list[l] for l in selected_ids]
 
             results[i]['docs_selected'] = selected_ids
+            i += 1
             
         write_jsonl(path_predicted_documents, results)
 
-def compute_score(path_predicted_documents, score_method, tf_idf_db):
+def compute_score(path_predicted_documents, score_method, tf_idf_db, nlp):
     # description: 1. load the predictions. 2. iterate through claims and compute the score
     # input:
     #   - path_predicted_documents : path to file with predictions (list of dictionaries)
@@ -83,7 +91,6 @@ def compute_score(path_predicted_documents, score_method, tf_idf_db):
 
     results = load_jsonl(path_predicted_documents)
 
-    
     nr_claims = 0
     nr_no_evidence = 0
     nr_title_not_in_dict = 0
@@ -118,14 +125,19 @@ def compute_score(path_predicted_documents, score_method, tf_idf_db):
             
             if score_flag == "correct":
                 score += 1.0
+                results = add_score_to_results(1, score_method, results, i)
             elif score_flag == 'title_not_in_dictionary':
                 nr_title_not_in_dict += 1
+                results = add_score_to_results('title_not_in_dictionary', score_method, results, i)
             elif score_flag == "no_evidence":
                 nr_no_evidence += 1
-            elif score_flag not in ["valid_claim", "correct", "incorrect"]:
+                results = add_score_to_results('no_evidence', score_method, results, i)
+            elif score_flag in ["valid_claim", "correct", "incorrect"]:
+                results = add_score_to_results(0, score_method, results, i)
+            else:
                 raise ValueError('not a valid score_flag', score_flag)
 
-        return score / float(nr_claims - nr_no_evidence - nr_title_not_in_dict + 0.000001)
+        score = score / float(nr_claims - nr_no_evidence - nr_title_not_in_dict + 0.000001)
 
     elif score_method == "e_score":
         score = 0.0
@@ -136,6 +148,7 @@ def compute_score(path_predicted_documents, score_method, tf_idf_db):
 
             score_flag = "valid_claim"
             nr_interpreters = len(claim.evidence)
+            score_item = 0.0
             for interpreter in claim.evidence:
                 nr_proofs = len(interpreter)
                 for proof in interpreter:
@@ -146,17 +159,22 @@ def compute_score(path_predicted_documents, score_method, tf_idf_db):
                         try:
                             id_proof = tf_idf_db.vocab.title_2_id_dict[title_proof]
                             if id_proof in claim.docs_selected:
-                                score += 1 / float(nr_interpreters * nr_proofs)
+                                score_item += 1 / float(nr_interpreters * nr_proofs)
                         except KeyError:
                             score_flag = "title_not_in_dictionary"
                             break
+            score += score_item
             if score_flag == 'title_not_in_dictionary':
                 nr_title_not_in_dict += 1
+                results = add_score_to_results('title_not_in_dictionary', score_method, results, i)
             elif score_flag == "no_evidence":
                 nr_no_evidence += 1
-            elif score_flag not in ["valid_claim"]:
+                results = add_score_to_results('no_evidence', score_method, results, i)
+            elif score_flag == "valid_claim":
+                results = add_score_to_results(score_item, score_method, results, i)
+            else:
                 raise ValueError('not a valid score_flag', score_flag)
-        return score / float(nr_claims - nr_no_evidence - nr_title_not_in_dict + 0.000001)
+        score = score / float(nr_claims - nr_no_evidence - nr_title_not_in_dict + 0.000001)
 
     elif score_method == "f_score_labelled":
         score = {'SUPPORTS': 0, 'NOT ENOUGH INFO': 0, 'REFUTES': 0}
@@ -186,18 +204,21 @@ def compute_score(path_predicted_documents, score_method, tf_idf_db):
                             break
             
             if score_flag == "correct":
+                results = add_score_to_results(1, score_method, results, i)
                 score[claim.label] += 1.0
             elif score_flag == 'title_not_in_dictionary':
+                results = add_score_to_results('title_not_in_dictionary', score_method, results, i)
                 nr_title_not_in_dict[claim.label] += 1
             elif score_flag == "no_evidence":
+                results = add_score_to_results('no_evidence', score_method, results, i)
                 nr_no_evidence[claim.label] += 1
-            elif score_flag not in ["valid_claim", "correct", "incorrect"]:
+            elif score_flag == "incorrect":
+                results = add_score_to_results(0, score_method, results, i)
+            else:
                 raise ValueError('not a valid score_flag', score_flag)
 
         for label in label_list:
             score[label] = score[label] / float(count[label] - nr_title_not_in_dict[label] - nr_no_evidence[label] + 0.00001)
-
-        return score
 
     elif score_method == "e_score_labelled":
         score = {'SUPPORTS': 0, 'NOT ENOUGH INFO': 0, 'REFUTES': 0}
@@ -213,6 +234,7 @@ def compute_score(path_predicted_documents, score_method, tf_idf_db):
 
             score_flag = "valid_claim"
             nr_interpreters = len(claim.evidence)
+
             for interpreter in claim.evidence:
                 nr_proofs = len(interpreter)
                 for proof in interpreter:
@@ -238,43 +260,21 @@ def compute_score(path_predicted_documents, score_method, tf_idf_db):
         for label in label_list:
             score[label] = score[label] / float(count[label] - nr_title_not_in_dict[label] - nr_no_evidence[label] + 0.0001)
 
-        return score
-
     else:
         raise ValueError('no valid score_method', score_method)
 
+    write_jsonl(path_predicted_documents, results)
+    return score
 
-def write_jsonl(filename, dic_list):
-    # description: only use for wikipedia dump
-    output_file = open(filename, 'w', encoding='utf-8')
-    for dic in dic_list:
-        json.dump(dic, output_file) 
-        output_file.write("\n")
-
-class Claim:
-    def __init__(self, claim_dictionary):
-        self.id = claim_dictionary['id']
-        self.verifiable = claim_dictionary['verifiable']
-        self.label = claim_dictionary['label']
-        self.claim = claim_dictionary['claim']
-        self.evidence = claim_dictionary['evidence']
-        if 'docs_selected' in claim_dictionary:
-            self.docs_selected = claim_dictionary['docs_selected']
-    def get_tokenized_claim(self, method_tokenization):
-        claim_without_dot = self.claim[:-1]  # remove . at the end
-        text = Text(claim_without_dot, "claim")
-        tokenized_claim = text.process(method_tokenization)
-        return tokenized_claim
-    def get_n_grams(self, method_tokenization, n_gram):
-        return count_n_grams(self.get_tokenized_claim(method_tokenization), n_gram, 'str')
-    
 if __name__ == '__main__':
     # === variables === #
-    experiment_nr = 11
+    experiment_nr = 12
     claim_data_set = 'dev'
+    nlp = spacy.load('en', disable=["parser", "ner"])
 
     file_name = 'experiment_%.2d.json'%(experiment_nr)
     path_experiment = os.path.join(config.ROOT, config.CONFIG_DIR, file_name)
+
     with open(path_experiment) as json_data_file:
         data = json.load(json_data_file)
 
@@ -285,15 +285,19 @@ if __name__ == '__main__':
     tf_idf_db = TFIDFDatabase(vocabulary = vocab_db, method_tf = data['method_tf'], method_df = data['method_df'],
         delimiter = data['delimiter'], threshold = data['threshold'], source = data['tf_idf_source'])
     
+    dir_results = '01_results'
+    if not os.path.isdir(os.path.join(tf_idf_db.base_dir, dir_results)):
+        os.makedirs(os.path.join(tf_idf_db.base_dir, dir_results))
+
     file_name = 'score.json'
-    path_score = os.path.join(tf_idf_db.base_dir, file_name)
+    path_score = os.path.join(tf_idf_db.base_dir, dir_results, file_name)
 
     if os.path.isfile(path_score):
         score_dict = dict_load_json(path_score)
     else:
         score_dict = {}
 
-    list_K = [5, 10, 20]
+    list_K = [5, 10, 20, 40]
     score_list = ['e_score', 'f_score', 'e_score_labelled', 'f_score_labelled']
 
     for K in list_K:
@@ -301,15 +305,20 @@ if __name__ == '__main__':
             file_name = 'predicted_labels_' + str(K) + '.json'
             path_predicted_documents = os.path.join(tf_idf_db.base_dir, file_name)
 
-            
-            get_selection(path_predicted_documents, K, tf_idf_db, claim_data_set)
-            
-            score = compute_score(path_predicted_documents, score_method, tf_idf_db)
-            
-            if str(K) not in score_dict:
-                score_dict[str(K)] = {}
+            experiment_performed = False
+            if str(K) in score_dict:
+                if score_method in score_dict[str(K)]:
+                    experiment_performed = True
 
-            score_dict[str(K)][score_method] = score 
+            if experiment_performed == False:
+                get_selection(path_predicted_documents, K, tf_idf_db, claim_data_set, nlp)
+            
+                score = compute_score(path_predicted_documents, score_method, tf_idf_db, nlp)
+                
+                if str(K) not in score_dict:
+                    score_dict[str(K)] = {}
 
-            dict_save_json(score_dict, path_score)
-            # save results
+                score_dict[str(K)][score_method] = score 
+
+                dict_save_json(score_dict, path_score)
+
