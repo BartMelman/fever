@@ -268,57 +268,61 @@ def compute_score(path_predicted_documents, score_method, tf_idf_db, nlp):
 
 if __name__ == '__main__':
     # === variables === #
-    experiment_nr = 12
-    claim_data_set = 'dev'
-    nlp = spacy.load('en', disable=["parser", "ner"])
-
-    file_name = 'experiment_%.2d.json'%(experiment_nr)
-    path_experiment = os.path.join(config.ROOT, config.CONFIG_DIR, file_name)
-
-    with open(path_experiment) as json_data_file:
-        data = json.load(json_data_file)
-
-    vocab_db = Vocabulary(path_wiki_database = os.path.join(config.ROOT, data['path_large_wiki_database']), 
-        table_name_wiki = data['table_name_wiki'], n_gram = data['n_gram'],
-        method_tokenization = data['method_tokenization'], source = data['vocabulary_source'])
-
-    tf_idf_db = TFIDFDatabase(vocabulary = vocab_db, method_tf = data['method_tf'], method_df = data['method_df'],
-        delimiter = data['delimiter'], threshold = data['threshold'], source = data['tf_idf_source'])
-    
-    dir_results = '01_results'
-    if not os.path.isdir(os.path.join(tf_idf_db.base_dir, dir_results)):
-        os.makedirs(os.path.join(tf_idf_db.base_dir, dir_results))
-
-    file_name = 'score.json'
-    path_score = os.path.join(tf_idf_db.base_dir, dir_results, file_name)
-
-    if os.path.isfile(path_score):
-        score_dict = dict_load_json(path_score)
-    else:
-        score_dict = {}
-
+    experiment_nr_list = [12]
     list_K = [5, 10, 20, 40]
     score_list = ['e_score', 'f_score', 'e_score_labelled', 'f_score_labelled']
 
-    for K in list_K:
-        for score_method in score_list:
-            file_name = 'predicted_labels_' + str(K) + '.json'
-            path_predicted_documents = os.path.join(tf_idf_db.base_dir, file_name)
+    claim_data_set = 'dev'
+    dir_results = '01_results'
 
-            experiment_performed = False
-            if str(K) in score_dict:
-                if score_method in score_dict[str(K)]:
-                    experiment_performed = True
+    for experiment_nr in experiment_nr_list:
+        
+        nlp = spacy.load('en', disable=["parser", "ner"])
 
-            if experiment_performed == False:
-                get_selection(path_predicted_documents, K, tf_idf_db, claim_data_set, nlp)
-            
-                score = compute_score(path_predicted_documents, score_method, tf_idf_db, nlp)
+        file_name = 'experiment_%.2d.json'%(experiment_nr)
+        path_experiment = os.path.join(config.ROOT, config.CONFIG_DIR, file_name)
+
+        with open(path_experiment) as json_data_file:
+            data = json.load(json_data_file)
+
+        vocab_db = Vocabulary(path_wiki_database = os.path.join(config.ROOT, data['path_large_wiki_database']), 
+            table_name_wiki = data['table_name_wiki'], n_gram = data['n_gram'],
+            method_tokenization = data['method_tokenization'], source = data['vocabulary_source'])
+
+        tf_idf_db = TFIDFDatabase(vocabulary = vocab_db, method_tf = data['method_tf'], method_df = data['method_df'],
+            delimiter = data['delimiter'], threshold = data['threshold'], source = data['tf_idf_source'])
+        
+        
+        if not os.path.isdir(os.path.join(tf_idf_db.base_dir, dir_results)):
+            os.makedirs(os.path.join(tf_idf_db.base_dir, dir_results))
+
+        file_name = 'score.json'
+        path_score = os.path.join(tf_idf_db.base_dir, dir_results, file_name)
+
+        if os.path.isfile(path_score):
+            score_dict = dict_load_json(path_score)
+        else:
+            score_dict = {}
+
+        for K in list_K:
+            for score_method in score_list:
+                file_name = 'predicted_labels_' + str(K) + '.json'
+                path_predicted_documents = os.path.join(tf_idf_db.base_dir, file_name)
+
+                experiment_performed = False
+                if str(K) in score_dict:
+                    if score_method in score_dict[str(K)]:
+                        experiment_performed = True
+
+                if experiment_performed == False:
+                    get_selection(path_predicted_documents, K, tf_idf_db, claim_data_set, nlp)
                 
-                if str(K) not in score_dict:
-                    score_dict[str(K)] = {}
+                    score = compute_score(path_predicted_documents, score_method, tf_idf_db, nlp)
+                    
+                    if str(K) not in score_dict:
+                        score_dict[str(K)] = {}
 
-                score_dict[str(K)][score_method] = score 
+                    score_dict[str(K)][score_method] = score 
 
-                dict_save_json(score_dict, path_score)
+                    dict_save_json(score_dict, path_score)
 

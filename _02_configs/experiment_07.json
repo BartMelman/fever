@@ -6,7 +6,8 @@
     "threshold" : 0.01,
     "vocabulary_source" : "title",
     "tf_idf_source" : "title",
-    "method_tokenization" : ["tokenize", "make_lower_case"],
+    "method_tokenization" : ["tokenize_lemma_nouns"],
     "method_tf" : "term_frequency",
     "method_df" : "inverse_document_frequency"
 }
+
