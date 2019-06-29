@@ -14,7 +14,7 @@ from utils_doc_results import add_score_to_results, Claim, ClaimDocTokenizer
 
 import config
 
-def get_selection(path_predicted_documents, K, tf_idf_db, claim_data_set, nlp):
+def get_selection(path_predicted_documents, K, tf_idf_db, claim_data_set, nlp, title_tf_idf_flag_normalise):
     # description: 
     # input
     #   - path_predicted_documents: 
@@ -40,6 +40,9 @@ def get_selection(path_predicted_documents, K, tf_idf_db, claim_data_set, nlp):
         path_dev_set = os.path.join(config.ROOT, config.DATA_DIR, config.RAW_DATA_DIR, claim_data_set + ".jsonl")
         results = load_jsonl(path_dev_set)
         
+        if tf_idf_db.source == 'title' and title_tf_idf_flag_normalise == True:
+                mydict_total_tf_idf = SqliteDict(tf_idf_db.path_total_tf_idf_dict)
+
         batch_sln = 10000
         list_claims = []
         for i in range(len(results)):
@@ -67,6 +70,11 @@ def get_selection(path_predicted_documents, K, tf_idf_db, claim_data_set, nlp):
                         dictionary[id] = dictionary[id] + tf_idf
                     except KeyError:
                         dictionary[id] = tf_idf
+
+            if tf_idf_db.source == 'title' and title_tf_idf_flag_normalise == True:
+                for id in dictionary:
+                    total_tf_idf = mydict_total_tf_idf[id]
+                    dictionary[id] = dictionary[id] / float(total_tf_idf)
 
             keys_list = list(dictionary.keys())
             tf_idf_list = list(dictionary.values())
@@ -271,9 +279,8 @@ if __name__ == '__main__':
     experiment_nr_list = [12]
     list_K = [5, 10, 20, 40]
     score_list = ['e_score', 'f_score', 'e_score_labelled', 'f_score_labelled']
-
+    title_tf_idf_flag_normalise = True
     claim_data_set = 'dev'
-    dir_results = '01_results'
 
     for experiment_nr in experiment_nr_list:
         
@@ -292,10 +299,15 @@ if __name__ == '__main__':
         tf_idf_db = TFIDFDatabase(vocabulary = vocab_db, method_tf = data['method_tf'], method_df = data['method_df'],
             delimiter = data['delimiter'], threshold = data['threshold'], source = data['tf_idf_source'])
         
-        
+        if title_tf_idf_flag_normalise == True:
+            dir_results = '01_results' + '_tf_idf_normalise'
+        else:
+            dir_results = '01_results'    
+
         if not os.path.isdir(os.path.join(tf_idf_db.base_dir, dir_results)):
             os.makedirs(os.path.join(tf_idf_db.base_dir, dir_results))
 
+        
         file_name = 'score.json'
         path_score = os.path.join(tf_idf_db.base_dir, dir_results, file_name)
 
@@ -307,7 +319,8 @@ if __name__ == '__main__':
         for K in list_K:
             for score_method in score_list:
                 file_name = 'predicted_labels_' + str(K) + '.json'
-                path_predicted_documents = os.path.join(tf_idf_db.base_dir, file_name)
+
+                path_predicted_documents = os.path.join(tf_idf_db.base_dir, dir_results, file_name)
 
                 experiment_performed = False
                 if str(K) in score_dict:
@@ -315,7 +328,7 @@ if __name__ == '__main__':
                         experiment_performed = True
 
                 if experiment_performed == False:
-                    get_selection(path_predicted_documents, K, tf_idf_db, claim_data_set, nlp)
+                    get_selection(path_predicted_documents, K, tf_idf_db, claim_data_set, nlp, title_tf_idf_flag_normalise)
                 
                     score = compute_score(path_predicted_documents, score_method, tf_idf_db, nlp)
                     

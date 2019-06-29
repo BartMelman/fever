@@ -41,8 +41,19 @@ class TFIDFDatabase:
         self.path_tf_idf_dict = None
         self.path_ids_dict = None
         self.path_oov = None
+        self.path_total_tf_idf_dict = None
+
+
+
         self.get_paths()
         
+        if self.source == 'title':
+            self.id_2_total_tf_idf = {}
+            if os.path.isfile(self.path_total_tf_idf_dict):
+                self.id_2_total_tf_idf = dict_load_json(self.path_total_tf_idf_dict)
+            else:
+                self.id_2_total_tf_idf = {}
+                
         # if os.path.isfile(self.path_vocabulary_selected_dict):
         #     print('selected vocabulary dictionary already exists')
         # else:
@@ -226,11 +237,18 @@ class TFIDFDatabase:
                     batch_dictionary.reset()
 
                     if self.source == 'title':
-                        with SqliteDict(self.path_total_tf_idf_dict) as mydict_total_tf_idf:
-                            for k, tf_idf_total in tqdm(total_tf_idf_dict.items(), desc='total title database', total = len(total_tf_idf_dict)):
-                                mydict_total_tf_idf[k] = tf_idf_total
-                            mydict_total_tf_idf.commit()
-                            total_tf_idf_dict = {}
+                        for k, tf_idf_total in tqdm(total_tf_idf_dict.items(), desc='total title database', total = len(total_tf_idf_dict)):
+                            self.id_2_total_tf_idf[k] = tf_idf_total
+                        total_tf_idf_dict = {}
+
+        if self.source == 'title':
+            dict_save_json(self.id_2_total_tf_idf, self.path_total_tf_idf_dict)
+
+                        # with SqliteDict(self.path_total_tf_idf_dict) as mydict_total_tf_idf:
+                        #     for k, tf_idf_total in tqdm(total_tf_idf_dict.items(), desc='total title database', total = len(total_tf_idf_dict)):
+                        #         mydict_total_tf_idf[k] = tf_idf_total
+                        #     mydict_total_tf_idf.commit()
+                        #     total_tf_idf_dict = {}
 
 class TFIDF(object):
     # https://en.wikipedia.org/wiki/Tf%E2%80%93idf

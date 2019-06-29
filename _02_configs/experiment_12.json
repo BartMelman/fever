@@ -7,6 +7,6 @@
     "vocabulary_source" : "title",
     "tf_idf_source" : "title",
     "method_tokenization" : ["tokenize_lemma"],
-    "method_tf" : "raw_count",
+    "method_tf" : "term_frequency",
     "method_df" : "inverse_document_frequency"
 }
