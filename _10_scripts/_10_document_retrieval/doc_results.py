@@ -41,7 +41,7 @@ def get_selection(path_predicted_documents, K, tf_idf_db, claim_data_set, nlp, t
         results = load_jsonl(path_dev_set)
         
         if tf_idf_db.source == 'title' and title_tf_idf_flag_normalise == True:
-                mydict_total_tf_idf = SqliteDict(tf_idf_db.path_total_tf_idf_dict)
+            mydict_total_tf_idf = dict_load_json(tf_idf_db.path_total_tf_idf_dict)
 
         batch_sln = 10000
         list_claims = []
@@ -73,7 +73,7 @@ def get_selection(path_predicted_documents, K, tf_idf_db, claim_data_set, nlp, t
 
             if tf_idf_db.source == 'title' and title_tf_idf_flag_normalise == True:
                 for id in dictionary:
-                    total_tf_idf = mydict_total_tf_idf[id]
+                    total_tf_idf = mydict_total_tf_idf[str(id)]
                     dictionary[id] = dictionary[id] / float(total_tf_idf)
 
             keys_list = list(dictionary.keys())
@@ -276,7 +276,7 @@ def compute_score(path_predicted_documents, score_method, tf_idf_db, nlp):
 
 if __name__ == '__main__':
     # === variables === #
-    experiment_nr_list = [12]
+    experiment_nr_list = [6,7,8,9,10]
     list_K = [5, 10, 20, 40]
     score_list = ['e_score', 'f_score', 'e_score_labelled', 'f_score_labelled']
     title_tf_idf_flag_normalise = True

@@ -50,6 +50,8 @@ class TFIDFDatabase:
         if self.source == 'title':
             self.id_2_total_tf_idf = {}
             if os.path.isfile(self.path_total_tf_idf_dict):
+                print('load total TF-IDF dictionary')
+                print(self.path_total_tf_idf_dict)
                 self.id_2_total_tf_idf = dict_load_json(self.path_total_tf_idf_dict)
             else:
                 self.id_2_total_tf_idf = {}
