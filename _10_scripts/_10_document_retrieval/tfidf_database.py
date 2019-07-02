@@ -20,19 +20,27 @@ from text_database import Text
 class TFIDFDatabase:
     """A sample Employee class"""
     def __init__(self, vocabulary, method_tf, method_df, delimiter, threshold, source):
+        # === constants === #
         self.delimiter_title = '_'
         self.delimiter_text = ' '
         self.default_first_value = 'F'
+
+        # === variables === #
+        self.batch_size = 50000
+
+        # === input === #
         self.vocab = vocabulary
         self.delimiter = delimiter
-        self.batch_size = 50000
-        # self.get_base_dir()
         self.method_tf = method_tf
         self.method_df = method_df
         self.threshold = threshold
+                
         self.nr_wiki_pages = self.vocab.nr_wiki_pages
+        self.tag_list_selected = self.vocab.tag_list_selected
+        self.tags_in_db_flag = self.vocab.tags_in_db_flag
         self.source = source 
-
+        self.delimiter_tag_word = '\z'
+        self.delimiter_words = self.vocab.delimiter_words
         self.path_threshold_folder = None
         self.base_dir = None
         self.path_vocabulary_selected_dict = None
@@ -43,11 +51,9 @@ class TFIDFDatabase:
         self.path_oov = None
         self.path_total_tf_idf_dict = None
 
-
-
         self.get_paths()
         
-        if self.source == 'title':
+        if self.source == 'title' and self.vocab.n_gram == 1:
             self.id_2_total_tf_idf = {}
             if os.path.isfile(self.path_total_tf_idf_dict):
                 print('load total TF-IDF dictionary')
@@ -87,7 +93,7 @@ class TFIDFDatabase:
         self.path_tf_idf_dict = os.path.join(self.base_dir, 'tf_idf_dict.sqlite')
         self.path_ids_dict = os.path.join(self.base_dir, 'ids_dict.sqlite')
         self.path_oov = os.path.join(self.base_dir, 'oov.sqlite')
-        self.path_total_tf_idf_dict = os.path.join(self.base_dir, 'title_total_tf_idf.sqlite')
+        self.path_total_tf_idf_dict = os.path.join(self.base_dir, 'title_total_tf_idf.json')
 
         try:
             os.makedirs(self.path_threshold_folder)    
@@ -150,6 +156,8 @@ class TFIDFDatabase:
 
         batch_dictionary = DictionaryBatchIDF(self.delimiter)
         
+        list_pos_tokenization = ['tokenize_lemma_pos', 'tokenize_text_pos', 'tokenize_lower_pos']
+
         nr_wiki_pages = self.vocab.nr_wiki_pages
         method_tokenization = self.vocab.method_tokenization
         n_gram = self.vocab.n_gram
@@ -175,33 +183,118 @@ class TFIDFDatabase:
                 id_list = list(text_dict.keys())
                 j=0
                 # total tf idf
-
-                
-
                 # batch dictionary
                 if (id_wiki_page%batch_size_spacy == 0) or (id_wiki_page == self.nr_wiki_pages):
                     for doc in tqdm(self.vocab.nlp.pipe(iter_phrases(text_dict.values())), desc='pipeline', total = len(id_list)):
                         text_class = Text(doc)
                         tokenized_text = text_class.process(self.vocab.method_tokenization)
 
-                        tf_dict, nr_words_doc = count_n_grams(tokenized_text, n_gram, 'str')
+                        tf_dict, nr_words_doc = count_n_grams(tokenized_text, n_gram, 'str', self.delimiter_words)
 
                         total_count_doc = self.vocab.nr_wiki_pages
                         total_count_tf = nr_words_doc
                         
                         tf_idf_document = 0.0
-                        for word in tf_dict:
-                            count_tf = tf_dict[word]
-                            try:
-                                count_doc = dict_document_count[word]
-                            except KeyError:
-                                # print('KeyError fill database', word)
-                                count_doc = 1
-                        
-                            if count_doc < int(self.threshold * self.nr_wiki_pages):
-                                tf_idf_value  = scorer.get_tf_idf(count_tf, total_count_tf, count_doc, total_count_doc)
-                                batch_dictionary.update(word, id_list[j], tf_idf_value)
-                                tf_idf_document += tf_idf_value
+                        for key, count_tf in tf_dict:
+                            # === unigram === #
+                            if self.n_gram == 1:
+                                if self.method_tokenization in list_pos_tokenization:
+                                    tag = key.split(self.delimiter_tag_word)[0]
+                                    word = key.split(self.delimiter_tag_word)[1]
+                                    if self.tags_in_db_flag == True:
+                                        if stop_word_in_key(word) == False:
+                                            # only save certain selected bigrams
+                                            # count_tf = tf_dict[word]
+                                            try:
+                                                count_doc = dict_document_count[key]
+                                            except KeyError:
+                                                # print('KeyError fill database', word)
+                                                count_doc = 1
+                                        
+                                            if count_doc < int(self.threshold * self.nr_wiki_pages):
+                                                tf_idf_value  = scorer.get_tf_idf(count_tf, total_count_tf, count_doc, total_count_doc)
+                                                batch_dictionary.update(key, id_list[j], tf_idf_value)
+                                                tf_idf_document += tf_idf_value
+                                    else:
+                                        raise ValueError('use lemma instead')
+                                else:
+                                    if stop_word_in_key(key) == False:
+                                        # only save certain selected bigrams
+                                        # count_tf = tf_dict[word]
+                                        try:
+                                            count_doc = dict_document_count[key]
+                                        except KeyError:
+                                            print('KeyError fill database', key)
+                                            count_doc = 1
+                                    
+                                        if count_doc < int(self.threshold * self.nr_wiki_pages):
+                                            tf_idf_value  = scorer.get_tf_idf(count_tf, total_count_tf, count_doc, total_count_doc)
+                                            batch_dictionary.update(key, id_list[j], tf_idf_value)
+                                            tf_idf_document += tf_idf_value
+
+                                
+                            elif self.n_gram == 2:
+                                if self.method_tokenization in list_pos_tokenization: 
+                                    if self.tags_in_db_flag == True:
+                                        phrase = key.split(self.delimiter_words)
+                                        tag1 = phrase[0].split(self.delimiter_tag_word)[0]
+                                        tag2 = phrase[1].split(self.delimiter_tag_word)[0]
+                                        word1 = phrase[0].split(self.delimiter_tag_word)[1]
+                                        word2 = phrase[1].split(self.delimiter_tag_word)[1]
+                                        word = self.delimiter_words.join([word1, word2])
+                                        if (tag1 in self.tag_list_selected) and (tag2 in self.tag_list_selected):
+                                            count_tf = tf_dict[word]
+                                            try:
+                                                count_doc = dict_document_count[word]
+                                            except KeyError:
+                                                print('KeyError fill database', word)
+                                                count_doc = 1
+                                        
+                                            if count_doc < int(self.threshold * self.nr_wiki_pages):
+                                                tf_idf_value  = scorer.get_tf_idf(count_tf, total_count_tf, count_doc, total_count_doc)
+                                                batch_dictionary.update(word, id_list[j], tf_idf_value)
+                                                tf_idf_document += tf_idf_value
+
+                                    else:
+                                        raise ValueError('no code for tag_selected == False')
+                                else:
+                                    raise ValueError('code not designed for no pos for bigrams')
+                            else:
+                                raise ValueError('code not designed for n_gram > 2', self.n_gram)
+
+                                # # only save certain selected bigrams
+                                # if tag_selected_method == True:
+                                #     phrase = key.split(self.delimiter_words)
+                                #     tag1 = phrase[0].split(self.delimiter_tag_word)[0]
+                                #     tag2 = phrase[1].split(self.delimiter_tag_word)[0]
+                                #     word1 = phrase[0].split(self.delimiter_tag_word)[1]
+                                #     word2 = phrase[1].split(self.delimiter_tag_word)[1]
+
+                                #     if (tag1 in tag_list_selected) and (tag2 in tag_list_selected):
+                                #         count_tf = tf_dict[word]
+                                #         try:
+                                #             count_doc = dict_document_count[word]
+                                #         except KeyError:
+                                #             # print('KeyError fill database', word)
+                                #             count_doc = 1
+                                    
+                                #         if count_doc < int(self.threshold * self.nr_wiki_pages):
+                                #             tf_idf_value  = scorer.get_tf_idf(count_tf, total_count_tf, count_doc, total_count_doc)
+                                #             batch_dictionary.update(word, id_list[j], tf_idf_value)
+                                #             tf_idf_document += tf_idf_value
+                                # else:
+                                #     count_tf = tf_dict[word]
+                                #     try:
+                                #         count_doc = dict_document_count[word]
+                                #     except KeyError:
+                                #         # print('KeyError fill database', word)
+                                #         count_doc = 1
+                                
+                                #     if count_doc < int(self.threshold * self.nr_wiki_pages):
+                                #         tf_idf_value  = scorer.get_tf_idf(count_tf, total_count_tf, count_doc, total_count_doc)
+                                #         batch_dictionary.update(word, id_list[j], tf_idf_value)
+                                #         tf_idf_document += tf_idf_value
+
                         total_tf_idf_dict[id_list[j]] = tf_idf_document
                         j += 1
                     text_dict = {}

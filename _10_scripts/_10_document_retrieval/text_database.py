@@ -48,6 +48,7 @@ class Text:
         # text_type_options = ['title', 'text', 'lines', 'claim']
 
         self.text = text
+        self.delimiter_position_tag = '\z'
         
         # if text_type not in text_type_options:
         #     raise ValueError('text_type not in text_type_options', text_type, text_type_options)
@@ -60,7 +61,7 @@ class Text:
     def process(self, method_list):
         """Dispatch method"""
         method_options = ['tokenize', 'tokenize_lemma', 'tokenize_lemma_list_accepted', 
-        'tokenize_lemma_nouns', 'tokenize_lemma_prop_nouns', 'tokenize_lemma_number'] 
+        'tokenize_lemma_nouns', 'tokenize_lemma_prop_nouns', 'tokenize_lemma_number', 'tokenize_lemma_pos'] 
 
         for method in method_list:
             if method not in method_options:
@@ -88,6 +89,14 @@ class Text:
     def tokenize_lemma_number(self):
         return [word.lemma_ for word in self.text if word.pos_ in self.list_num]
 
+    def tokenize_lemma_pos(self):
+        return [word.pos_ + self.delimiter_position_tag + word.lemma_ for word in self.text]
+
+    def tokenize_text_pos(self):
+        return [word.pos_ + self.delimiter_position_tag + word.text for word in self.text]
+
+    def tokenize_lower_pos(self):
+        return [(word.pos_ + self.delimiter_position_tag + word.text).lower() for word in self.text]
 
 #     def tokenize(self, text):
 #         # definition: replace '-LRB-' by '-LRB- ' if it is a title.

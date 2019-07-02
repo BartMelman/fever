@@ -16,7 +16,7 @@ import config
 
 class Vocabulary:
     """A sample Employee class"""
-    def __init__(self, path_wiki_database, table_name_wiki, n_gram, method_tokenization, source):
+    def __init__(self, path_wiki_database, table_name_wiki, n_gram, method_tokenization, tags_in_db_flag, source, tag_list_selected):
         self.delimiter_title = '_'
         self.delimiter_text = ' '
         self.nlp = spacy.load('en', disable=["parser", "ner"])
@@ -32,7 +32,10 @@ class Vocabulary:
         self.id_2_title_dict = None 
         self.n_gram = n_gram
         self.method_tokenization = method_tokenization 
-        
+        self.delimiter_words = '\q'
+        self.tags_in_db_flag = tags_in_db_flag
+        self.tag_list_selected = tag_list_selected
+
         source_options = ['title','text']
         if source not in source_options:
             raise ValueError('source not in source_options', source, source_options)
@@ -89,7 +92,8 @@ class Vocabulary:
             self.get_title_dictionary()
         
     def get_base_dir(self):
-        method_options = ['tokenize', 'remove_space', 'remove_bracket_and_word_between', 'make_lower_case', 'lemmatization', 'lemmatization_get_nouns']
+        method_options = ['tokenize', 'tokenize_lemma', 'tokenize_lemma_list_accepted', 'tokenize_lemma_nouns', 
+        'tokenize_lemma_prop_nouns', 'tokenize_lemma_number', 'tokenize_lemma_pos']
         folder_name = 'vocab'
         folder_name = folder_name + '_' + self.source + '_' + str(self.n_gram)
 
@@ -106,6 +110,8 @@ class Vocabulary:
                 folder_name = folder_name + '_tlpn'
             elif method == 'tokenize_lemma_number':
                 folder_name = folder_name + '_tln'
+            elif method == 'tokenize_lemma_pos':
+                folder_name = folder_name + '_lp'
             else:
                 raise ValueError('method not in method_options', method, method_options)
         
@@ -188,6 +194,7 @@ class Vocabulary:
         separator = ' '
         batch_size_pipeline = 100000
         batch_size_sqlite =  100000
+        list_pos_tokenization = ['tokenize_lemma_pos', 'tokenize_text_pos', 'tokenize_lower_pos']
         # list_exception_tokens = ['is', 'a', 'of', ',', 'and', '.', 'in', 'by', 'their', 'has', 'been', 'to', 'from', 'the', 'that', 'as', "'s", 'are', 'for', 'who', '', 'it', 'known', 'its', 'was', 'first', 'with', 'be', 'but', 'an', 'on', '-lrb-', '-rrb-', 'which', 'district', ':', '``', "''", 'one', 'national', 'united', 'states', 'at', 'this', 'county', ';', 'may', 'new', 'his', 'american', 'she', 'born', 'film', 'he', 'also', 'or', 'were', '--', 'two', 'had', 'after']
         # list_exception_tokens = [' ', '', ',', '.']
 
@@ -225,13 +232,49 @@ class Vocabulary:
                 if (id_nr%batch_size_sqlite == 0) or (id_nr == self.nr_wiki_pages):
                     with SqliteDict(self.path_document_count) as dict_document_count:
                         for key, value in tqdm(n_gramfdist.items(), desc='document count dictionary'):
-                            if stop_word_in_key(key) == False:
-                                word = ' '.join(key)
-                                if word in dict_document_count:
-                                    dict_document_count[word] = dict_document_count[word] + value
+                            if self.n_gram == 1:
+                                if self.method_tokenization in list_pos_tokenization:
+                                    tag = key.split(self.delimiter_tag_word)[0]
+                                    word = key.split(self.delimiter_tag_word)[1]
+                                    if self.tags_in_db_flag == True:
+                                        if stop_word_in_key(word) == False:
+                                            if key in dict_document_count:
+                                                dict_document_count[key] = dict_document_count[key] + value
+                                            else:
+                                                dict_document_count[key] = value
+                                                nr_n_grams += 1
+                                    else:
+                                        raise ValueError('use lemma instead')
                                 else:
-                                    dict_document_count[' '.join(key)] = value
-                                    nr_n_grams += 1
+                                    if stop_word_in_key(key) == False:
+                                        word = self.delimiter_words.join(key)
+                                        if word in dict_document_count:
+                                            dict_document_count[word] = dict_document_count[word] + value
+                                        else:
+                                            dict_document_count[word] = value
+                                            nr_n_grams += 1
+                            elif self.n_gram == 2:
+                                if self.method_tokenization in list_pos_tokenization: 
+                                    if self.tags_in_db_flag == True:
+                                        phrase = key.split(self.delimiter_words)
+                                        tag1 = phrase[0].split(self.delimiter_tag_word)[0]
+                                        tag2 = phrase[1].split(self.delimiter_tag_word)[0]
+                                        word1 = phrase[0].split(self.delimiter_tag_word)[1]
+                                        word2 = phrase[1].split(self.delimiter_tag_word)[1]
+
+                                        if (tag1 in self.tag_list_selected) and (tag2 in self.tag_list_selected):
+                                            word = self.delimiter_words.join([word1, word2])
+                                            if word in dict_document_count:
+                                                dict_document_count[word] = dict_document_count[word] + value
+                                            else:
+                                                dict_document_count[word] = value
+                                                nr_n_grams += 1
+                                    else:
+                                        raise ValueError('no code for tag_selected == False')
+                                else:
+                                    raise ValueError('code not designed for no pos for bigrams')
+                            else:
+                                raise ValueError('code not designed for n_gram > 2', self.n_gram)
                         dict_document_count.commit()
                     n_gramfdist = FreqDist()
 
@@ -261,7 +304,7 @@ def unique_values(iterable):
             previous = item
             yield item
 
-def count_n_grams(tokenized_text, n_gram, output_format):
+def count_n_grams(tokenized_text, n_gram, output_format, separator_words):
     # description: 
     # input
     # - tokenized_text: tokenized and splitted text
@@ -270,7 +313,7 @@ def count_n_grams(tokenized_text, n_gram, output_format):
     # - [dict] : dictionary of counts for n_grams
     
     output_format_options = ['tuple','str']
-    separator = ' '
+    # separator = ' '
 
     n_gramfdist = FreqDist()
     n_gramfdist.update(ngrams(tokenized_text, n_gram))
@@ -283,7 +326,7 @@ def count_n_grams(tokenized_text, n_gram, output_format):
         new_dictionary = {}
         for key in dictionary.keys():
             if stop_word_in_key(key) == False:
-                new_dictionary[' '.join(key)] = dictionary[key]
+                new_dictionary[separator.join(key)] = dictionary[key]
         dictionary = new_dictionary
     
     nr_words = sum(list(dictionary.values()))
