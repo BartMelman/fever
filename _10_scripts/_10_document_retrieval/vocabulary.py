@@ -326,7 +326,7 @@ def count_n_grams(tokenized_text, n_gram, output_format, separator_words):
         new_dictionary = {}
         for key in dictionary.keys():
             if stop_word_in_key(key) == False:
-                new_dictionary[separator.join(key)] = dictionary[key]
+                new_dictionary[separator_words.join(key)] = dictionary[key]
         dictionary = new_dictionary
     
     nr_words = sum(list(dictionary.values()))
