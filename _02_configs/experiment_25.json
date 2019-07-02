@@ -9,7 +9,7 @@
     "method_tokenization" : ["tokenize"],
     "method_tf" : "term_frequency",
     "method_df" : "inverse_document_frequency",
-    "tags_in_db_flag" : false,
+    "tags_in_db_flag" : 0,
     "tag_list_selected" : ["INTJ", "NOUN", "NUM", "PROPN", "SYM", "X", "ADJ"]
 }
 

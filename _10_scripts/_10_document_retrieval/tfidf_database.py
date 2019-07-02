@@ -201,7 +201,7 @@ class TFIDFDatabase:
                                 if self.method_tokenization in list_pos_tokenization:
                                     tag = key.split(self.delimiter_tag_word)[0]
                                     word = key.split(self.delimiter_tag_word)[1]
-                                    if self.tags_in_db_flag == True:
+                                    if self.tags_in_db_flag == 1:
                                         if stop_word_in_key(word) == False:
                                             # only save certain selected bigrams
                                             # count_tf = tf_dict[word]
@@ -235,7 +235,7 @@ class TFIDFDatabase:
                                 
                             elif self.n_gram == 2:
                                 if self.method_tokenization in list_pos_tokenization: 
-                                    if self.tags_in_db_flag == True:
+                                    if self.tags_in_db_flag == 1:
                                         phrase = key.split(self.delimiter_words)
                                         tag1 = phrase[0].split(self.delimiter_tag_word)[0]
                                         tag2 = phrase[1].split(self.delimiter_tag_word)[0]
