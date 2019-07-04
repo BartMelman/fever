@@ -1,8 +1,12 @@
 import os
 from sqlitedict import SqliteDict
-from utils_db import num_files_in_directory
+import sqlite3
+import spacy
 from tqdm import tqdm
+
+from utils_db import num_files_in_directory
 from utils_db import dict_save_json, dict_load_json, load_jsonl
+
 
 class WikiDatabaseSqlite:
 
@@ -36,7 +40,7 @@ class WikiDatabaseSqlite:
         if os.path.isfile(self.path_settings):
             print('Load existing settings file')
             self.settings = dict_load_json(self.path_settings)
-            self.nr_wikipedia_pages = self.settings['nr_wikipedia_pages']
+            self.nr_wiki_pages = self.settings['nr_wikipedia_pages']
         else:
             raise ValueError('the settings dictionary should exist')
 
@@ -49,18 +53,19 @@ class WikiDatabaseSqlite:
         self.title_2_id_dict  = None
         self.id_2_title_dict  = None
 
-        if self.id_title_dict_flag == True:
-            self.get_title_dictionary()
+        self.get_title_dictionary()
 
     def get_title_dictionary(self):
         if os.path.isfile(self.path_title_2_id_dict) and os.path.isfile(self.path_id_2_title_dict):
-            print('Load title dictionary')
-            self.title_2_id_dict = dict_load_json(self.path_title_2_id_dict)
-            self.id_2_title_dict = dict_load_json(self.path_id_2_title_dict)
+            if self.id_title_dict_flag == True:
+                print('Load title dictionary')
+                self.title_2_id_dict = dict_load_json(self.path_title_2_id_dict)
+                self.id_2_title_dict = dict_load_json(self.path_id_2_title_dict)
         else:
             self.title_2_id_dict  = {}
             self.id_2_title_dict  = {}
-            
+            self.tmp_id_title_dict_flag = self.id_title_dict_flag
+            self.id_title_dict_flag = False
             for id_nr in tqdm(range(self.nr_wiki_pages), desc='title-id-dictionary'):
                 title = self.get_title_from_id(id_nr)
                 self.title_2_id_dict[title] = id_nr
@@ -68,6 +73,8 @@ class WikiDatabaseSqlite:
             
             dict_save_json(self.title_2_id_dict, self.path_title_2_id_dict)
             dict_save_json(self.id_2_title_dict, self.path_id_2_title_dict)
+
+            self.id_title_dict_flag = self.tmp_id_title_dict_flag
 
     def create_databases(self):
         batch_size = 10
@@ -87,8 +94,7 @@ class WikiDatabaseSqlite:
                     with SqliteDict(self.path_title_2_text) as dict_title_2_text:
                         for wiki_page_nr in tqdm(range(1, nr_wikipedia_files + 1), desc='wiki_page_nr'):
                             # load json wikipedia dump file
-                            wiki_page_path = os.path.join(
-                                self.path_wiki_pages, 'wiki-%.3d.jsonl' % (wiki_page_nr))
+                            wiki_page_path = os.path.join(self.path_wiki_pages, 'wiki-%.3d.jsonl' % (wiki_page_nr))
                             list_dict = load_jsonl(wiki_page_path)
                             
                             # iterate over pages
@@ -96,12 +102,12 @@ class WikiDatabaseSqlite:
                                 title = page['id']
                                 if title != '':
                                     text = page['text']
-                                    id_cnt += 1
                                     
                                     dict_id_2_title[id_cnt] = title
                                     dict_title_2_id[title] = id_cnt
                                     dict_id_2_text[id_cnt] = text
                                     dict_title_2_text[title] = text
+                                    id_cnt += 1
                             
                             # commit every batch_size'th document
                             if (wiki_page_nr%batch_size == 0) or (wiki_page_nr == nr_wikipedia_files):
@@ -109,13 +115,18 @@ class WikiDatabaseSqlite:
                                 dict_title_2_id.commit()
                                 dict_id_2_text.commit()
                                 dict_title_2_text.commit()
+                        dict_title_2_text.commit()
+                    dict_id_2_text.commit()
+                dict_title_2_id.commit()
+            dict_id_2_title.commit()
+
 
         settings['nr_wikipedia_pages'] = id_cnt
         dict_save_json(settings, self.path_settings)
 
     def get_title_from_id(self, id_nr):
         if self.id_title_dict_flag == True:
-            return self.id_2_title_dict[id_nr]
+            return self.id_2_title_dict[str(id_nr)]
         else:
             return self.id_2_title_db[id_nr]
 
@@ -144,7 +155,7 @@ class WikiDatabaseSqlite:
         return tokenized_title
 
 
-# class WikiDatabase:
+class WikiDatabase:
     """A sample Employee class"""
     def __init__(self, path_database, table_name):
         self.path_database = path_database

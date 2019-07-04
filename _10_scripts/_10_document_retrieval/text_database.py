@@ -6,6 +6,25 @@ import spacy
 
 from _10_scripts._01_database.wiki_database import WikiDatabase
 
+class TextDatabaseSqlite:
+    """A sample Employee class"""
+    def __init__(self, wiki_database):
+        self.wiki_database = wiki_database
+        
+        self.nlp = spacy.load('en', disable=["parser", "ner"])
+
+    def get_tokenized_text_from_id(self, id_nr, method_list = []):
+        # method: 
+        text = Text(self.wiki_database.get_text_from_id(id_nr), 'text', self.nlp)
+        tokenized_text = text.process(method_list)
+        return tokenized_text
+    
+    def get_tokenized_title_from_id(self, id_nr, method_list = []):
+        # recover title from wiki_database and return the tokonized title
+        title = Text(self.wiki_database.get_title_from_id(id_nr), 'title', self.nlp)
+        tokenized_title = title.process(method_list)
+        return tokenized_title
+    
 
 class TextDatabase:
     """A sample Employee class"""
