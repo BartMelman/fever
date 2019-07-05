@@ -6,10 +6,9 @@ from tqdm import tqdm
 import spacy
 
 from utils_db import dict_save_json, dict_load_json, load_jsonl, dict_save_json, write_jsonl
-from text_database import TextDatabase, Text
-from vocabulary import Vocabulary, iter_phrases
+from vocabulary import VocabularySqlite, iter_phrases, Text
 from vocabulary import count_n_grams
-from tfidf_database import TFIDFDatabase
+from tfidf_database import TFIDFDatabaseSqlite
 
 import config
 
@@ -36,8 +35,9 @@ class Claim:
             self.docs_selected = claim_dictionary['docs_selected']
     
 class ClaimDocTokenizer:
-    def __init__(self, doc):
+    def __init__(self, doc, delimiter_words):
         self.doc = doc
+        self.delimiter_words = delimiter_words
     def get_tokenized_claim(self, method_tokenization):
         # claim_without_dot = self.claim[:-1]  # remove . at the end
         # doc = self.nlp(claim_without_dot)
@@ -45,4 +45,4 @@ class ClaimDocTokenizer:
         tokenized_claim = text.process(method_tokenization)
         return tokenized_claim
     def get_n_grams(self, method_tokenization, n_gram):
-        return count_n_grams(self.get_tokenized_claim(method_tokenization), n_gram, 'str')
+        return count_n_grams(self.get_tokenized_claim(method_tokenization), n_gram, 'str', self.delimiter_words)

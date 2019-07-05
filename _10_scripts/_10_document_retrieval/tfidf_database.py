@@ -14,6 +14,7 @@ from utils_db import dict_save_json, dict_load_json
 from dictionary_batch_idf import DictionaryBatchIDF
 from vocabulary import Vocabulary, count_n_grams, stop_word_in_key, iter_phrases
 from wiki_database import Text
+
 # from _10_scripts._01_database.wiki_database import WikiDatabase
 # from text_database import Text
 
@@ -122,9 +123,10 @@ class TFIDFDatabaseSqlite:
 
                         iter_nr += 1
 
-                        if iter_nr == self.batch_size_empty_db:
+                        if iter_nr >= self.batch_size_empty_db:
                             iter_nr = 0
                             mydict_tf_idf.commit()
+                            mydict_ids.commit()
                 mydict_ids.commit()
             mydict_tf_idf.commit()
                 
@@ -256,7 +258,7 @@ class TFIDFDatabaseSqlite:
                                     mydict_tf_idf[word] = mydict_tf_idf[word] + self.delimiter + tf_idf_value
                                     mydict_ids[word] = mydict_ids[word] + self.delimiter + id_word    
                                 except KeyError:
-                                    print('keyerror')
+                                    print('keyerror', word)
                                     if word not in mydict_tf_idf:
                                         with SqliteDict(self.path_oov) as mydict_oov:
                                             mydict_oov[word] = True
