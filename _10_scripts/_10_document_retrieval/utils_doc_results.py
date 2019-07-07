@@ -46,3 +46,8 @@ class ClaimDocTokenizer:
         return tokenized_claim
     def get_n_grams(self, method_tokenization, n_gram):
         return count_n_grams(self.get_tokenized_claim(method_tokenization), n_gram, 'str', self.delimiter_words)
+
+def get_tag_word_from_wordtag(key, delimiter):
+    splitted_key = key.split(delimiter)
+
+    return splitted_key[0], splitted_key[1]
