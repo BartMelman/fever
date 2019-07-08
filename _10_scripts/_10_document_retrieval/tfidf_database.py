@@ -12,7 +12,7 @@ from document import Document
 from utils_db import dict_save_json, dict_load_json
 # from tf_idf import count_n_grams
 from dictionary_batch_idf import DictionaryBatchIDF
-from vocabulary import Vocabulary, count_n_grams, stop_word_in_key, iter_phrases
+from vocabulary import VocabularySqlite, count_n_grams, stop_word_in_key, iter_phrases
 from wiki_database import Text
 
 # from _10_scripts._01_database.wiki_database import WikiDatabase
@@ -27,6 +27,7 @@ class TFIDFDatabaseSqlite:
         self.delimiter_text = ' '
         self.default_first_value = 'F'
         self.batch_size_empty_db = 100000
+        self.list_pos_tokenization = ['tokenize_lemma_pos', 'tokenize_text_pos', 'tokenize_lower_pos']
 
         # === variables === #
         self.batch_size = 50000
@@ -177,7 +178,7 @@ class TFIDFDatabaseSqlite:
                         for key, count_tf in tf_dict.items():
                             # === unigram === #
                             if self.n_gram == 1:
-                                if self.method_tokenization[0] in list_pos_tokenization:
+                                if self.method_tokenization[0] in self.list_pos_tokenization:
                                     tag = key.split(self.delimiter_tag_word)[0]
                                     word = key.split(self.delimiter_tag_word)[1]
                                     if self.tags_in_db_flag == 1:
@@ -212,7 +213,7 @@ class TFIDFDatabaseSqlite:
 
                                 
                             elif self.n_gram == 2:
-                                if self.method_tokenization[0] in list_pos_tokenization: 
+                                if self.method_tokenization[0] in self.list_pos_tokenization: 
                                     if self.tags_in_db_flag == 1:
                                         phrase = key.split(self.delimiter_words)
                                         tag1 = phrase[0].split(self.delimiter_tag_word)[0]

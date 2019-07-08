@@ -4,8 +4,10 @@
 import os
 import json
 import pickle 
+import sys
 
 
+        
 def num_files_in_directory(path_directory):
     # description: find the number of files in directory
     # input: path to directory
@@ -68,6 +70,16 @@ def dict_load_json(path_file):
         raise ValueError('json file does not exist', path_file)
     return dictionary
 
+class HiddenPrints:
+    def __enter__(self):
+        self._original_stdout = sys.stdout
+        sys.stdout = open(os.devnull, 'w')
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        sys.stdout.close()
+        sys.stdout = self._original_stdout
+
+        
 # def save_dict_2_json(dictionary, path_file):
 #     if os.path.isfile(path_file):
 #         print('overwriting file: %s'%(path_file))

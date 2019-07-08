@@ -5,8 +5,9 @@ import shutil
 from tqdm import tqdm
 import spacy
 
+from wiki_database import Text
 from utils_db import dict_save_json, dict_load_json, load_jsonl, dict_save_json, write_jsonl
-from vocabulary import VocabularySqlite, iter_phrases, Text
+from vocabulary import VocabularySqlite
 from vocabulary import count_n_grams
 from tfidf_database import TFIDFDatabaseSqlite
 
