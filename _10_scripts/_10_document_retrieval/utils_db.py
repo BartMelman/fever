@@ -1,12 +1,7 @@
-#!/usr/bin/env python3
-
-
 import os
 import json
 import pickle 
 import sys
-
-
         
 def num_files_in_directory(path_directory):
     # description: find the number of files in directory
@@ -16,13 +11,6 @@ def num_files_in_directory(path_directory):
     number_of_files = len([item for item in os.listdir(path_directory) if os.path.isfile(os.path.join(path_directory, item))])
 
     return number_of_files
-
-# def write_jsonl(filename, dic_list):
-#     # description: only use for wikipedia dump
-#     output_file = open(filename, 'w', encoding='utf-8')
-#     for dic in dic_list:
-#         json.dump(dic, output_file) 
-#         output_file.write("\n")
         
 def write_jsonl(filename, file):
     # description: write a list of dictionaries in utf-8 format

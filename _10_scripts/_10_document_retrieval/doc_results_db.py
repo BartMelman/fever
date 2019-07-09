@@ -3,15 +3,12 @@ from tqdm import tqdm
 from sqlitedict import SqliteDict
 
 from wiki_database import WikiDatabaseSqlite, Text
-from doc_results_db_utils import get_empty_tag_dict, get_tag_2_id_dict, get_tag_dict, get_vocab_tf_idf_from_exp, get_tf_idf_name, get_vocab_tf_idf_from_exp
-from doc_results_db_utils import get_dict_from_n_gram
+from utils_doc_results_db import get_empty_tag_dict, get_tag_2_id_dict, get_tag_dict, get_vocab_tf_idf_from_exp, get_tf_idf_name, get_vocab_tf_idf_from_exp
+from utils_doc_results_db import get_dict_from_n_gram
 from utils_db import dict_load_json, dict_save_json, HiddenPrints, load_jsonl
 from utils_doc_results import Claim, ClaimDocTokenizer, get_tag_word_from_wordtag
 
 import config
-
-
-
 
 # def get_empty_dict_claim():
 #     empty_dict = {}
@@ -33,7 +30,6 @@ import config
 #     empty_dict['tokenize_lemma']['max_sum_idf'] = 0
 #     return empty_dict
 
-
 class ClaimFile:
     """A sample Employee class"""
     def __init__(self, id, path_dir_files):
@@ -52,7 +48,28 @@ class ClaimFile:
 #             self.claim_dict['title']['1_gram']['nr_words_per_pos'] = get_empty_tag_dict()
 #             self.claim_dict['title']['ids'] = {}
             self.save_claim()
-
+    
+    def process_claims_selected(self, claim_dictionary):
+        # add ids to selected dictionary which are the proof
+        claim = Claim(claim_dictionary)
+        if 'ids_selected' not in self.claim_dict:
+            interpreter_list = claim.evidence
+            id_list = []
+            for interpreter in interpreter_list:
+                for proof in interpreter:
+                    title = proof[2]
+                    if title is not None:
+                        id = wiki_database.get_id_from_title(title)
+                        id_list.append(id)
+            self.claim_dict['ids_selected'] = id_list
+        
+        # === add from selected_ids in claim_dictionary === #    
+        if 'docs_selected' in claim_dictionary:
+            self.claim_dict['ids_selected'] += claim['docs_selected']
+            
+        # === save === #
+        self.save_claim()
+        
     def process_claim(self, claim):
         self.claim_dict['claim']['text'] = claim
         self.save_claim()
@@ -148,6 +165,11 @@ if __name__ == '__main__':
     path_wiki_database_dir = os.path.join(config.ROOT, config.DATA_DIR, config.DATABASE_DIR)
     path_claim_data_set = os.path.join(config.ROOT, config.DATA_DIR, config.RAW_DATA_DIR, claim_data_set + ".jsonl")
 
+    path_dir_database = os.path.join(config.ROOT, config.DATA_DIR, config.DATABASE_DIR)
+    path_raw_data = os.path.join(config.ROOT, config.DATA_DIR, config.RAW_DATA_DIR)
+
+    claim_db = ClaimDatabase(path_dir_database = path_dir_database, path_raw_data = path_raw_data, claim_data_set = claim_data_set)
+
     try:
         os.makedirs(path_dir_results, exist_ok=True)
     except FileExistsError:
@@ -174,6 +196,7 @@ if __name__ == '__main__':
             file.process_tags(tag_list, n_gram)
             claim = Claim(results[id])
             file.process_claim(claim.claim)
+            file.process_claims_selected(results[id])
 
     print('claim database: insert nr words per tag for claim')
 
@@ -185,7 +208,11 @@ if __name__ == '__main__':
         file = ClaimFile(id = id, path_dir_files = path_dir_claims)
         file.process_nr_words_per_pos(tf_idf_db, tag_2_id_dict)
 
-    print('claim database: ')
+    print('claim database: insert selected ids')
+
+
+
+
     # === selected ids === #
 
     # experiment_nr = 31
