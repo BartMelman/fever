@@ -68,7 +68,7 @@ class WikiDatabaseSqlite:
             for id_nr in tqdm(range(self.nr_wiki_pages), desc='title-id-dictionary'):
                 title = self.get_title_from_id(id_nr)
                 self.title_2_id_dict[title] = id_nr
-                self.id_2_title_dict[id_nr] = title
+                self.id_2_title_dict[str(id_nr)] = title
             
             dict_save_json(self.title_2_id_dict, self.path_title_2_id_dict)
             dict_save_json(self.id_2_title_dict, self.path_id_2_title_dict)
