@@ -31,13 +31,14 @@ class WikiDatabaseSqlite:
         self.path_title_2_id_dict = os.path.join(path_dir_database, 'title_2_id.json')
         
         # === process === #
+        print('wiki_database')
         self.nlp = spacy.load('en', disable=["parser", "ner"])
 
         if not (os.path.isfile(self.path_id_2_title) and os.path.isfile(self.path_title_2_id) and os.path.isfile(self.path_id_2_text) and os.path.isfile(self.path_title_2_text)):
             self.create_databases()
 
         if os.path.isfile(self.path_settings):
-            print('Load existing settings file')
+            print('- Load existing settings file')
             self.settings = dict_load_json(self.path_settings)
             self.nr_wiki_pages = self.settings['nr_wikipedia_pages']
         else:
@@ -57,7 +58,7 @@ class WikiDatabaseSqlite:
     def get_title_dictionary(self):
         if os.path.isfile(self.path_title_2_id_dict) and os.path.isfile(self.path_id_2_title_dict):
             if self.id_title_dict_flag == True:
-                print('Load title dictionary')
+                print('- Load title dictionary')
                 self.title_2_id_dict = dict_load_json(self.path_title_2_id_dict)
                 self.id_2_title_dict = dict_load_json(self.path_id_2_title_dict)
         else:
@@ -79,7 +80,7 @@ class WikiDatabaseSqlite:
         batch_size = 10
         
         if os.path.isfile(self.path_settings):
-            print('Load existing settings file')
+            print('- Load existing settings file')
             settings = dict_load_json(self.path_settings)
         else:
             settings = {}

@@ -6,7 +6,7 @@ from wiki_database import WikiDatabaseSqlite, Text
 from utils_doc_results_db import get_empty_tag_dict, get_tag_2_id_dict, get_tag_dict, get_vocab_tf_idf_from_exp, get_tf_idf_name, get_vocab_tf_idf_from_exp
 from utils_doc_results_db import get_dict_from_n_gram
 from utils_db import dict_load_json, dict_save_json, HiddenPrints, load_jsonl
-from utils_doc_results import Claim, ClaimDocTokenizer, get_tag_word_from_wordtag
+from utils_doc_results import Claim, ClaimDocTokenizer, get_tag_word_from_wordtag, ClaimDatabase
 
 import config
 
@@ -151,24 +151,25 @@ class ClaimFile:
             dict_save_json(self.claim_dict, self.path_claim)
 
 if __name__ == '__main__':
+    # === constants === #
 
     # === variables === #
     n_gram = 1
     claim_data_set = 'dev'
     folder_name_score_combination = 'score_combination'
 
+    # === process === #
     path_dir_results = os.path.join(config.ROOT, config.RESULTS_DIR, folder_name_score_combination)
     path_tags = os.path.join(path_dir_results, 'tags_' + claim_data_set + '_n_gram_' + str(n_gram) + '.json')
-    # path_dir_files = os.path.join(path_dir_results, claim_data_set)
-    path_dir_claims = os.path.join(path_dir_results, 'claims_' + claim_data_set)
+
     path_wiki_pages = os.path.join(config.ROOT, config.DATA_DIR, config.WIKI_PAGES_DIR, 'wiki-pages')
     path_wiki_database_dir = os.path.join(config.ROOT, config.DATA_DIR, config.DATABASE_DIR)
+    
     path_claim_data_set = os.path.join(config.ROOT, config.DATA_DIR, config.RAW_DATA_DIR, claim_data_set + ".jsonl")
-
-    path_dir_database = os.path.join(config.ROOT, config.DATA_DIR, config.DATABASE_DIR)
+    path_dir_claim_database = os.path.join(config.ROOT, config.DATA_DIR, config.DATABASE_DIR)
     path_raw_data = os.path.join(config.ROOT, config.DATA_DIR, config.RAW_DATA_DIR)
 
-    claim_db = ClaimDatabase(path_dir_database = path_dir_database, path_raw_data = path_raw_data, claim_data_set = claim_data_set)
+    path_dir_claims = os.path.join(path_dir_results, claim_data_set)
 
     try:
         os.makedirs(path_dir_results, exist_ok=True)
@@ -178,13 +179,15 @@ if __name__ == '__main__':
     try:
         os.makedirs(path_dir_claims, exist_ok=True)
     except FileExistsError:
-        print('folder already exists:', path_dir_claim)
+        print('folder already exists:', path_dir_claims)
+        
+    claim_database = ClaimDatabase(path_dir_database = path_dir_claim_database, path_raw_data = path_raw_data, claim_data_set = claim_data_set)
     
-    results = load_jsonl(path_claim_data_set)
     wiki_database = WikiDatabaseSqlite(path_wiki_database_dir, path_wiki_pages)
     tag_2_id_dict = get_tag_2_id_dict()
 
     tag_dict = get_tag_dict(claim_data_set, n_gram, path_tags, wiki_database)
+
     nr_claims = 1000 # len(results)
 
     print('claim database: insert claim\'s text and claim\'s tag_list')
@@ -194,9 +197,10 @@ if __name__ == '__main__':
         if id < nr_claims:
             file = ClaimFile(id = id, path_dir_files = path_dir_claims)
             file.process_tags(tag_list, n_gram)
-            claim = Claim(results[id])
+            claim_dict = claim_database.get_claim_from_id(id)
+            claim = Claim(claim_dict)
             file.process_claim(claim.claim)
-            file.process_claims_selected(results[id])
+            file.process_claims_selected(claim_dict)
 
     print('claim database: insert nr words per tag for claim')
 

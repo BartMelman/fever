@@ -1,7 +1,6 @@
 import os
 from tqdm import tqdm
 import json
-import unicodedata
 
 from utils_db import dict_save_json, dict_load_json, load_jsonl, HiddenPrints
 from vocabulary import VocabularySqlite
@@ -71,6 +70,11 @@ def get_tag_2_id_dict():
     return tag_2_id_dict
 
 def get_vocab_tf_idf_from_exp(experiment_nr, wiki_database):
+    tf_idf_db = get_tf_idf_from_exp(experiment_nr, wiki_database)
+    vocab = tf_idf_db.vocab
+    return vocab, tf_idf_db
+
+def get_tf_idf_from_exp(experiment_nr, wiki_database):
     file_name = 'experiment_%.2d.json'%(experiment_nr)
     path_experiment = os.path.join(config.ROOT, config.CONFIG_DIR, file_name)
 
@@ -83,7 +87,7 @@ def get_vocab_tf_idf_from_exp(experiment_nr, wiki_database):
 
     tf_idf_db = TFIDFDatabaseSqlite(vocabulary = vocab, method_tf = data['method_tf'], method_df = data['method_df'],
         delimiter = data['delimiter'], threshold = data['threshold'], source = data['tf_idf_source'])
-    return vocab, tf_idf_db
+    return tf_idf_db
 
 def get_tf_idf_name(experiment_nr):
     if experiment_nr in [31,34, 37]:
@@ -116,55 +120,3 @@ def get_dict_from_n_gram(n_gram_list, mydict_ids, mydict_tf_idf, tf_idf_db):
                 dictionary[id] = tf_idf
     return dictionary
 
-class ClaimDatabase:
-    def __init__(self, path_dir_database, path_raw_data, claim_data_set):
-        self.path_dir_database = path_dir_database
-        self.path_raw_data = path_raw_data
-        self.claim_data_set = claim_data_set
-        
-        self.path_dir_database_claims = os.path.join(self.path_dir_database, 'claims_' + str(self.claim_data_set))
-        self.path_raw_claims = os.path.join(path_raw_data, str(self.claim_data_set) + '.jsonl')
-        self.path_settings = os.path.join(path_dir_database_claims, 'settings.json')
-        
-        if not os.path.isdir(self.path_dir_database_claims):
-            print('create claim database')
-            os.makedirs(self.path_dir_database_claims)
-            self.create_database()
-        else:
-            print('claim database already exists')
-        
-        if os.path.isfile(self.path_settings):
-            self.settings = dict_load_json(self.path_settings)
-            self.nr_claims = settings['nr_claims']
-        else:
-            raise ValueError('settings file should exist')
-        
-        
-    def create_database(self):
-        list_claim_dicts = load_jsonl(self.path_raw_claims)
-        self.nr_claims = len(list_claim_dicts)
-        for id in tqdm(range(self.nr_claims)):
-            path_claim = os.path.join(self.path_dir_database_claims, str(id) + '.json')
-            dict_claim_id = list_claim_dicts[id]
-            dict_claim_id['verifiable'] = unicodedata.normalize('NFD', normalise_text(dict_claim_id['verifiable']))
-            dict_claim_id['claim'] = unicodedata.normalize('NFD', normalise_text(dict_claim_id['claim']))
-            for interpreter in range(len(dict_claim_id['evidence'])):
-                for proof in range(len(dict_claim_id['evidence'][interpreter])):
-                    if dict_claim_id['evidence'][interpreter][proof][2] != None:
-                        dict_claim_id['evidence'][interpreter][proof][2] = unicodedata.normalize('NFD', normalise_text(dict_claim_id['evidence'][interpreter][proof][2]))
-            
-            dict_save_json(dict_claim_id, path_claim)
-        
-        if os.path.isfile(self.path_settings):
-            settings = dict_load_json(self.path_settings)
-            
-        else:
-            settings = {}
-        
-        settings['nr_claims'] = self.nr_claims
-        dict_save_json(settings, self.path_settings)
-    
-    def get_claim_from_id(self, id):
-        path_claim = os.path.join(self.path_dir_database_claims, str(id) + '.json')
-        dict_claim_id = dict_load_json(path_claim)
-        return dict_claim_id
