@@ -1,34 +1,15 @@
 import os, sys
 from tqdm import tqdm
 from sqlitedict import SqliteDict
+import numpy as np
 
 from wiki_database import WikiDatabaseSqlite, Text
-from utils_doc_results_db import get_empty_tag_dict, get_tag_2_id_dict, get_tag_dict, get_vocab_tf_idf_from_exp, get_tf_idf_name, get_vocab_tf_idf_from_exp
-from utils_doc_results_db import get_dict_from_n_gram
+from utils_doc_results_db import get_empty_tag_dict, get_tag_2_id_dict, get_tag_dict, get_tf_idf_from_exp, get_tf_idf_name, get_vocab_tf_idf_from_exp
+from utils_doc_results_db import get_dict_from_n_gram, get_list_properties, get_value_if_exists
 from utils_db import dict_load_json, dict_save_json, HiddenPrints, load_jsonl
 from utils_doc_results import Claim, ClaimDocTokenizer, get_tag_word_from_wordtag, ClaimDatabase
 
 import config
-
-# def get_empty_dict_claim():
-#     empty_dict = {}
-#     empty_dict['nr_words_title'] = None
-#     empty_dict['nr_words_per_pos'] = None
-#     empty_dict['tokenize'] = {}
-#     empty_dict['tokenize']['matches_per_pos'] = get_empty_tag_dict()
-#     empty_dict['tokenize']['tf_idf'] = get_empty_tag_dict()
-#     empty_dict['tokenize']['raw_count_idf'] = get_empty_tag_dict()
-#     empty_dict['tokenize']['idf'] = get_empty_tag_dict()
-# #     empty_dict['tokenize']['raw_count_sum_per_pos'] = get_empty_tag_dict()
-# #     empty_dict['tokenize']['max_sum_idf'] = 0
-#     empty_dict['tokenize_lemma'] = {}
-#     empty_dict['tokenize_lemma']['matches_per_pos'] = get_empty_tag_dict()
-#     empty_dict['tokenize_lemma']['tf_idf_sum_per_pos'] = get_empty_tag_dict()
-#     empty_dict['tokenize_lemma']['raw_count_idf_sum_per_pos'] = get_empty_tag_dict()
-#     empty_dict['tokenize_lemma']['idf_sum_per_pos'] = get_empty_tag_dict()
-#     empty_dict['tokenize_lemma']['raw_count_sum_per_pos'] = get_empty_tag_dict()
-#     empty_dict['tokenize_lemma']['max_sum_idf'] = 0
-#     return empty_dict
 
 class ClaimFile:
     """A sample Employee class"""
@@ -139,7 +120,7 @@ class ClaimFile:
             self.claim_dict['claim']['1_gram']['nr_words'] = sum(n_grams_dict.values())
             
             for key, count in n_grams_dict.items():
-                tag, word = get_tag_word_from_wordtag(key, vocab.delimiter_tag_word)
+                tag, word = get_tag_word_from_wordtag(key, tf_idf_db.vocab.delimiter_tag_word)
                 pos_id = tag_2_id_dict[tag]
                 self.claim_dict['claim']['1_gram']['nr_words_per_pos'][str(pos_id)] += count
             self.save_claim()
@@ -180,7 +161,7 @@ if __name__ == '__main__':
         os.makedirs(path_dir_claims, exist_ok=True)
     except FileExistsError:
         print('folder already exists:', path_dir_claims)
-        
+
     claim_database = ClaimDatabase(path_dir_database = path_dir_claim_database, path_raw_data = path_raw_data, claim_data_set = claim_data_set)
     
     wiki_database = WikiDatabaseSqlite(path_wiki_database_dir, path_wiki_pages)
@@ -206,7 +187,7 @@ if __name__ == '__main__':
 
     experiment_nr = 37
     with HiddenPrints():
-        vocab, tf_idf_db = get_vocab_tf_idf_from_exp(experiment_nr, wiki_database)
+        tf_idf_db = get_tf_idf_from_exp(experiment_nr, wiki_database)
         
     for id in tqdm(range(nr_claims), desc = 'nr words per pos'):
         file = ClaimFile(id = id, path_dir_files = path_dir_claims)
@@ -214,17 +195,57 @@ if __name__ == '__main__':
 
     print('claim database: insert selected ids')
 
+    # === run experiment === #
+    experiment_list = [31, 37]
 
+    nr_claims_selected = 100 #nr_claims
 
+    for experiment_nr in experiment_list:
+        print('experiment:', experient_nr)
+        print('load tf_idf nr_words_pos')
+        with HiddenPrints():
+            tf_idf_db = get_tf_idf_from_exp(experiment_nr, wiki_database)
 
-    # === selected ids === #
+        mydict_ids = SqliteDict(tf_idf_db.path_ids_dict)
+        mydict_tf_idf = SqliteDict(tf_idf_db.path_tf_idf_dict)
 
-    # experiment_nr = 31
-
-    # print('load tf_idf nr_words_pos')
-    # with HiddenPrints():
-    #     vocab, tf_idf_db = get_vocab_tf_idf_from_exp(experiment_nr, wiki_database)
-
-    # mydict_ids = SqliteDict(tf_idf_db.path_ids_dict)
-    # mydict_tf_idf = SqliteDict(tf_idf_db.path_tf_idf_dict)
+        for id in tqdm(range(nr_claims_selected), desc = 'nr words per pos'):
+            file = ClaimFile(id = id, path_dir_files = path_dir_claims)
+        file.process_tf_idf_experiment(tag_2_id_dict, tf_idf_db, mydict_ids, mydict_tf_idf)
     
+    file = ClaimFile(id = id, path_dir_files = path_dir_claims)
+
+    # === save numpy results === #
+    file_name = ''
+    for experiment in experiment_list:
+        file_name = file_name + '_' + str(experiment)
+
+    path_numpy_dataset = os.path.join(path_dir_results, claim_data_set + '_numpy_data' + file_name)
+
+    id = 5
+    id_list = list(file.claim_dict['title']['1_gram'].keys())
+
+    observation_key_list_claim, _ = get_list_properties(file.claim_dict['claim']['1_gram'], [], [], [])
+    observation_key_list_title, _ = get_list_properties(file.claim_dict['title']['1_gram'][id_list[0]], [], [], [])
+
+    nr_variables = len(observation_key_list_claim) + len(observation_key_list_title)
+
+    data_matrix = np.zeros((nr_claims, nr_variables))
+
+    for id in range(nr_claims_selected):
+        _, values_claim = get_list_properties(file.claim_dict['claim']['1_gram'], [], [], [])
+        _, values_title = get_list_properties(file.claim_dict['title']['1_gram'][id_list[0]], [], [], [])
+
+        # === save === #
+        list_variables = values_claim + values_title
+        numpy_array = np.array(list_variables)
+        torch_array = torch.from_numpy(numpy_array)
+        file_name_variables = os.path.join(path_random_data, 'variable_' + str(id)  + '.pt')
+        
+        torch.save(torch_array, file_name_variables)
+
+        data_matrix[id, :] = values_claim + values_title
+        
+        np_array = randn(nr_variables)
+        torch_array = torch.from_numpy(np_array)
+        

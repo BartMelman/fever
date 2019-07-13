@@ -128,6 +128,7 @@ def compute_score(claim_database, score_method, tf_idf_db):
                             if id_proof in claim.docs_selected:
                                 score_flag = "correct"
                         except KeyError:
+                            print('title_not_in_dictionary', title_proof)
                             score_flag = "title_not_in_dictionary"
                             break
             
@@ -169,6 +170,7 @@ def compute_score(claim_database, score_method, tf_idf_db):
                             if id_proof in claim.docs_selected:
                                 score_item += 1 / float(nr_interpreters * nr_proofs)
                         except KeyError:
+                            print('title_not_in_dictionary', title_proof)
                             score_flag = "title_not_in_dictionary"
                             break
             score += score_item
@@ -208,6 +210,7 @@ def compute_score(claim_database, score_method, tf_idf_db):
                             if id_proof in claim.docs_selected:
                                 score_flag = "correct"
                         except KeyError:
+                            print('title_not_in_dictionary', title_proof)
                             score_flag = "title_not_in_dictionary"
                             break
             
@@ -255,6 +258,7 @@ def compute_score(claim_database, score_method, tf_idf_db):
                             if id_proof in claim.docs_selected:
                                 score[claim.label] += 1 / float(nr_interpreters * nr_proofs)
                         except KeyError:
+                            print('title_not_in_dictionary', title_proof)
                             score_flag = "title_not_in_dictionary"
                             break
             
@@ -285,10 +289,10 @@ if __name__ == '__main__':
     
     # === variables === #
     claim_data_set = 'dev'
-    experiment_nr_list = [37]
-    list_K = [20] # [5, 10, 20, 40]
+    experiment_nr_list = [31,32,33,34,35,36,37,38,39]
+    list_K = [5, 10, 20, 40, 100]
     score_list = ['e_score', 'f_score', 'e_score_labelled', 'f_score_labelled']
-    title_tf_idf_flag_normalise_list = [False] #[True, False]
+    title_tf_idf_flag_normalise_list = [True, False]
 
     # === process === #
     wiki_database = WikiDatabaseSqlite(path_wiki_database_dir, path_wiki_pages)

@@ -61,7 +61,7 @@ class TFIDFDatabaseSqlite:
 
         self.get_paths()
         
-        if self.source == 'title' and self.vocab.n_gram == 1:
+        if self.vocab.n_gram == 1:
             self.id_2_total_tf_idf = {}
             if os.path.isfile(self.path_total_tf_idf_dict):
                 print('load total TF-IDF dictionary')
@@ -275,10 +275,10 @@ class TFIDFDatabaseSqlite:
                     # === reset dictionary === #
                     batch_dictionary.reset()
 
-                    if self.source == 'title':
-                        for k, tf_idf_total in tqdm(total_tf_idf_dict.items(), desc='total title database', total = len(total_tf_idf_dict)):
-                            self.id_2_total_tf_idf[k] = tf_idf_total
-                        total_tf_idf_dict = {}
+                    # if self.source == 'title':
+                    for k, tf_idf_total in tqdm(total_tf_idf_dict.items(), desc='total title database', total = len(total_tf_idf_dict)):
+                        self.id_2_total_tf_idf[k] = tf_idf_total
+                    total_tf_idf_dict = {}
 
         if self.source == 'title':
             dict_save_json(self.id_2_total_tf_idf, self.path_total_tf_idf_dict)
