@@ -1,6 +1,7 @@
 import os
 from tqdm import tqdm
 import json
+import collections
 
 from utils_db import dict_save_json, dict_load_json, load_jsonl, HiddenPrints
 from vocabulary import VocabularySqlite
@@ -10,6 +11,17 @@ from wiki_database import WikiDatabaseSqlite
 from utils_doc_results import Claim, ClaimDocTokenizer
 
 import config
+
+def label_2_num(label):
+    if label == 'SUPPORTS':
+        return 0
+    elif label == 'REFUTES':
+        return 1
+    elif label == 'NOT ENOUGH INFO':
+        return 2
+    else:
+        raise ValueError('incorrect label', label)
+
 
 def get_tag_word_from_wordtag(key, delimiter):
     phrase = key.split(delimiter)
@@ -120,3 +132,25 @@ def get_dict_from_n_gram(n_gram_list, mydict_ids, mydict_tf_idf, tf_idf_db):
                 dictionary[id] = tf_idf
     return dictionary
 
+
+def get_list_properties(dict, temp_key_list, list_keys_list, list_values):
+    for key, value in dict.items():
+        if isinstance(value, collections.Mapping):
+            list_keys_list, list_values = get_list_properties(dict[key], temp_key_list + [key], list_keys_list, list_values)
+        else:
+            if type(value) is not str and type(value) is not list:
+                list_values.append(value)
+                list_keys_list.append(temp_key_list + [key])
+    return list_keys_list, list_values
+
+def get_value_if_exists(dict, list_keys):
+    tmp = dict
+    for key in list_keys:
+        try:
+            tmp = tmp[key]
+        except KeyError:
+            return 0
+    if isinstance(tmp, collections.Mapping):
+        raise ValueError('Get a Dictionary whereas we expect a value')
+    value = tmp
+    return value

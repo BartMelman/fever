@@ -2,10 +2,11 @@ import os, sys
 from tqdm import tqdm
 from sqlitedict import SqliteDict
 import numpy as np
+import torch
 
 from wiki_database import WikiDatabaseSqlite, Text
 from utils_doc_results_db import get_empty_tag_dict, get_tag_2_id_dict, get_tag_dict, get_tf_idf_from_exp, get_tf_idf_name, get_vocab_tf_idf_from_exp
-from utils_doc_results_db import get_dict_from_n_gram, get_list_properties, get_value_if_exists
+from utils_doc_results_db import get_dict_from_n_gram, get_list_properties, get_value_if_exists, label_2_num
 from utils_db import dict_load_json, dict_save_json, HiddenPrints, load_jsonl
 from utils_doc_results import Claim, ClaimDocTokenizer, get_tag_word_from_wordtag, ClaimDatabase
 
@@ -25,9 +26,8 @@ class ClaimFile:
             self.claim_dict['claim']['1_gram']['nr_words_per_pos'] = get_empty_tag_dict()
             self.claim_dict['title'] = {}
             self.claim_dict['title']['1_gram'] = {}
-#             self.claim_dict['title']['1_gram']['nr_words'] = None
-#             self.claim_dict['title']['1_gram']['nr_words_per_pos'] = get_empty_tag_dict()
-#             self.claim_dict['title']['ids'] = {}
+            self.claim_dict['text'] = {}
+            self.claim_dict['text']['1_gram'] = {}
             self.save_claim()
     
     def process_claims_selected(self, claim_dictionary):
@@ -42,6 +42,7 @@ class ClaimFile:
                     if title is not None:
                         id = wiki_database.get_id_from_title(title)
                         id_list.append(id)
+            self.claim_dict['ids_correct_docs'] = id_list
             self.claim_dict['ids_selected'] = id_list
         
         # === add from selected_ids in claim_dictionary === #    
@@ -52,7 +53,8 @@ class ClaimFile:
         self.save_claim()
         
     def process_claim(self, claim):
-        self.claim_dict['claim']['text'] = claim
+        self.claim_dict['claim']['text'] = claim.claim
+        self.claim_dict['claim']['label'] = claim.label
         self.save_claim()
 
     def process_tags(self, tag_list, n_gram):
@@ -65,6 +67,8 @@ class ClaimFile:
     
     def process_tf_idf_experiment(self, tag_2_id_dict, tf_idf_db, mydict_ids, mydict_tf_idf):
         tf_idf_name = get_tf_idf_name(experiment_nr)
+        source = tf_idf_db.source
+
         if tf_idf_db.n_gram == 1:
             doc = tf_idf_db.vocab.wiki_database.nlp(self.claim_dict['claim']['text'])
             
@@ -84,26 +88,33 @@ class ClaimFile:
                 
                 with HiddenPrints():
                     dictionary = get_dict_from_n_gram([word], mydict_ids, mydict_tf_idf, tf_idf_db)
-#                 print(len(dictionary))
+
                 if len(dictionary) < 2000:
                     for id, tf_idf_value in dictionary.items():
                         # === create dictionary if does not exist === #
-                        if str(id) not in self.claim_dict['title']['1_gram']:
-                            self.claim_dict['title']['1_gram'][str(id)] = {}
-                            title = tf_idf_db.vocab.wiki_database.get_title_from_id(id)
+                        if str(id) not in self.claim_dict[source]['1_gram']:
+                            self.claim_dict[source]['1_gram'][str(id)] = {}
 
-                            doc = tf_idf_db.vocab.wiki_database.nlp(title)
+                            if source == 'title':
+                                text = tf_idf_db.vocab.wiki_database.get_title_from_id(id)
+                            elif source == 'text':
+                                text = tf_idf_db.vocab.wiki_database.get_text_from_id(id)
+                            else:
+                                raise ValueError('source not in options', source)
+
+                            doc = tf_idf_db.vocab.wiki_database.nlp(text)
                             claim_doc_tokenizer = ClaimDocTokenizer(doc, tf_idf_db.vocab.delimiter_words)
                             n_grams_dict_title, nr_words_title = claim_doc_tokenizer.get_n_grams(tf_idf_db.vocab.method_tokenization, tf_idf_db.vocab.n_gram)
 
-                            self.claim_dict['title']['1_gram'][str(id)]['nr_words'] = nr_words_title
+                            self.claim_dict[source]['1_gram'][str(id)]['nr_words'] = nr_words_title
 
-                        if vocab.method_tokenization[0] not in self.claim_dict['title']['1_gram'][str(id)].keys():
-                            self.claim_dict['title']['1_gram'][str(id)][vocab.method_tokenization[0]] = {}
-                            if tf_idf_name not in self.claim_dict['title']['1_gram'][str(id)][vocab.method_tokenization[0]].keys():
-                                self.claim_dict['title']['1_gram'][str(id)][vocab.method_tokenization[0]][tf_idf_name] = get_empty_tag_dict()
+                        if tf_idf_db.vocab.method_tokenization[0] not in self.claim_dict[source]['1_gram'][str(id)].keys():
+                            self.claim_dict[source]['1_gram'][str(id)][tf_idf_db.vocab.method_tokenization[0]] = {}
+                            if tf_idf_name not in self.claim_dict[source]['1_gram'][str(id)][tf_idf_db.vocab.method_tokenization[0]].keys():
+                                self.claim_dict[source]['1_gram'][str(id)][tf_idf_db.vocab.method_tokenization[0]][tf_idf_name] = get_empty_tag_dict()
 
-                        self.claim_dict['title']['1_gram'][str(id)][vocab.method_tokenization[0]][tf_idf_name][str(pos_id)] += tf_idf_value   
+                        self.claim_dict[source]['1_gram'][str(id)][tf_idf_db.vocab.method_tokenization[0]][tf_idf_name][str(pos_id)] += tf_idf_value   
+                
                 idx += 1
             self.save_claim()
         else:
@@ -152,6 +163,13 @@ if __name__ == '__main__':
 
     path_dir_claims = os.path.join(path_dir_results, claim_data_set)
 
+    path_random_data = os.path.join(path_dir_results, claim_data_set + '_tensor')
+    
+    try:
+        os.makedirs(path_random_data, exist_ok=True)
+    except FileExistsError:
+        print('folder already exists:', path_random_data)
+
     try:
         os.makedirs(path_dir_results, exist_ok=True)
     except FileExistsError:
@@ -163,13 +181,11 @@ if __name__ == '__main__':
         print('folder already exists:', path_dir_claims)
 
     claim_database = ClaimDatabase(path_dir_database = path_dir_claim_database, path_raw_data = path_raw_data, claim_data_set = claim_data_set)
-    
     wiki_database = WikiDatabaseSqlite(path_wiki_database_dir, path_wiki_pages)
     tag_2_id_dict = get_tag_2_id_dict()
-
     tag_dict = get_tag_dict(claim_data_set, n_gram, path_tags, wiki_database)
 
-    nr_claims = 1000 # len(results)
+    nr_claims = claim_database.nr_claims
 
     print('claim database: insert claim\'s text and claim\'s tag_list')
 
@@ -180,7 +196,7 @@ if __name__ == '__main__':
             file.process_tags(tag_list, n_gram)
             claim_dict = claim_database.get_claim_from_id(id)
             claim = Claim(claim_dict)
-            file.process_claim(claim.claim)
+            file.process_claim(claim)
             file.process_claims_selected(claim_dict)
 
     print('claim database: insert nr words per tag for claim')
@@ -195,13 +211,10 @@ if __name__ == '__main__':
 
     print('claim database: insert selected ids')
 
-    # === run experiment === #
-    experiment_list = [31, 37]
-
-    nr_claims_selected = 100 #nr_claims
+    experiment_list = [31, 37] # [31,32,33,34,35,36,37]# [31, 37]
 
     for experiment_nr in experiment_list:
-        print('experiment:', experient_nr)
+        print('experiment:', experiment_nr)
         print('load tf_idf nr_words_pos')
         with HiddenPrints():
             tf_idf_db = get_tf_idf_from_exp(experiment_nr, wiki_database)
@@ -209,43 +222,47 @@ if __name__ == '__main__':
         mydict_ids = SqliteDict(tf_idf_db.path_ids_dict)
         mydict_tf_idf = SqliteDict(tf_idf_db.path_tf_idf_dict)
 
-        for id in tqdm(range(nr_claims_selected), desc = 'nr words per pos'):
+        for id in tqdm(range(nr_claims), desc = 'nr words per pos'):
             file = ClaimFile(id = id, path_dir_files = path_dir_claims)
         file.process_tf_idf_experiment(tag_2_id_dict, tf_idf_db, mydict_ids, mydict_tf_idf)
     
     file = ClaimFile(id = id, path_dir_files = path_dir_claims)
 
-    # === save numpy results === #
-    file_name = ''
-    for experiment in experiment_list:
-        file_name = file_name + '_' + str(experiment)
-
-    path_numpy_dataset = os.path.join(path_dir_results, claim_data_set + '_numpy_data' + file_name)
+    print('claim database: save results to folder with tensors')
 
     id = 5
     id_list = list(file.claim_dict['title']['1_gram'].keys())
 
     observation_key_list_claim, _ = get_list_properties(file.claim_dict['claim']['1_gram'], [], [], [])
-    observation_key_list_title, _ = get_list_properties(file.claim_dict['title']['1_gram'][id_list[0]], [], [], [])
+    observation_key_list_title, _ = get_list_properties(file.claim_dict['title']['1_gram'][id_list[0]], [], [], []) 
+    observation_key_list_text,  _ = get_list_properties(file.claim_dict['text']['1_gram'][id_list[0]], [], [], []) 
 
-    nr_variables = len(observation_key_list_claim) + len(observation_key_list_title)
+    # save key claim, title, text
 
-    data_matrix = np.zeros((nr_claims, nr_variables))
+    idx = 0
+    for id in range(nr_claims):
+        file = ClaimFile(id = id, path_dir_files = path_dir_claims)
+        label = claim.claim_dict['claim']['label']
 
-    for id in range(nr_claims_selected):
-        _, values_claim = get_list_properties(file.claim_dict['claim']['1_gram'], [], [], [])
-        _, values_title = get_list_properties(file.claim_dict['title']['1_gram'][id_list[0]], [], [], [])
+        if label is not 'NOT ENOUGH INFO':
+            label_nr = label_2_num(label)
+            
+            file_name_variables = os.path.join(path_random_data, 'variable_' + str(idx)  + '.pt')
+            file_name_label = os.path.join(path_random_data, 'label_' + str(idx)  + '.pt')
 
-        # === save === #
-        list_variables = values_claim + values_title
-        numpy_array = np.array(list_variables)
-        torch_array = torch.from_numpy(numpy_array)
-        file_name_variables = os.path.join(path_random_data, 'variable_' + str(id)  + '.pt')
-        
-        torch.save(torch_array, file_name_variables)
+            _, values_claim = get_list_properties(file.claim_dict['claim']['1_gram'], [], [], [])
+            _, values_title = get_list_properties(file.claim_dict['title']['1_gram'][id_list[0]], [], [], [])
+            _, values_text  = get_list_properties(file.claim_dict['text']['1_gram'][id_list[0]], [], [], [])
 
-        data_matrix[id, :] = values_claim + values_title
-        
-        np_array = randn(nr_variables)
-        torch_array = torch.from_numpy(np_array)
-        
+            list_variables = values_claim + values_title + values_text
+
+            numpy_array = np.array(list_variables)
+            torch_array = torch.from_numpy(numpy_array)      
+
+            torch.save(torch_array, file_name_variables)
+
+            tensor_label = torch.tensor([label_nr])
+            torch.save(tensor_label, file_name_label)
+
+            idx += 1
+

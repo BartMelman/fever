@@ -56,12 +56,14 @@ def get_tag_word_from_wordtag(key, delimiter):
     return splitted_key[0], splitted_key[1]
 
 class ClaimDatabase:
-    def __init__(self, path_dir_database, path_raw_data, claim_data_set):
+    def __init__(self, path_dir_database, path_raw_data, claim_data_set, K):
+        # description: create a database in which the 
         self.path_dir_database = path_dir_database
         self.path_raw_data = path_raw_data
         self.claim_data_set = claim_data_set
-        
-        self.path_dir_database_claims = os.path.join(self.path_dir_database, 'claims_' + str(self.claim_data_set))
+        self.K = K
+
+        self.path_dir_database_claims = os.path.join(self.path_dir_database, 'claims') #'claims_' + str(self.claim_data_set) + '_' + str(K))
         self.path_raw_claims = os.path.join(path_raw_data, str(self.claim_data_set) + '.jsonl')
         self.path_settings = os.path.join(self.path_dir_database_claims, 'settings.json')
         
@@ -76,9 +78,9 @@ class ClaimDatabase:
         if os.path.isfile(self.path_settings):
             self.settings = dict_load_json(self.path_settings)
             self.nr_claims = self.settings['nr_claims']
+            self.scoring_flag = self.settings['scoring_flag']
         else:
             raise ValueError('settings file should exist')
-        
         
     def create_database(self):
         list_claim_dicts = load_jsonl(self.path_raw_claims)
@@ -96,10 +98,12 @@ class ClaimDatabase:
             dict_save_json(dict_claim_id, path_claim)
         
         if os.path.isfile(self.path_settings):
-            settings = dict_load_json(self.path_settings)
-            
+            raise ValueError('settings file should not exist', self.path_settings)
+            # settings = dict_load_json(self.path_settings)
         else:
             settings = {}
+            settings['nr_claims'] = None
+            settings['scoring_flag'] = False
         
         settings['nr_claims'] = self.nr_claims
         dict_save_json(settings, self.path_settings)
@@ -125,12 +129,13 @@ class ClaimDatabase:
 
         self.write_claim_2_db(id, dict_claim)    
 
-    def set_K_flag(self, K):
-        if 'K' in self.settings:
-            if K in self.settings['K']:
-                print('K already in settings', K)
+    def set_scoring_flag(self, scoring_flag):
+        print('convert scoring flag from', self.settings['scoring_flag'], ' to ', scoring_flag)
+        if scoring_flag == self.settings['scoring_flag']:
+            print('no need to save, because the flags are the same')
+        elif scoring_flag in [False, True]:
+            with HiddenPrints():
+                dict_save_json(self.settings, self.path_settings)
+
         else:
-            self.settings['K'] = []
-        self.settings['K'].append(K)
-        with HiddenPrints():
-            dict_save_json(self.settings, self.path_settings)
+            raise ValueError('scoring flag is not True or False', scoring_flag)

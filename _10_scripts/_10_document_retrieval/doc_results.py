@@ -5,7 +5,7 @@ import shutil
 from tqdm import tqdm
 import spacy
 
-from utils_db import dict_save_json, dict_load_json, load_jsonl, dict_save_json, write_jsonl, HiddenPrints
+from utils_db import dict_save_json, dict_load_json, load_jsonl, dict_save_json, write_jsonl, HiddenPrints, mkdir_if_not_exist
 from utils_doc_results import ClaimDatabase
 from wiki_database import WikiDatabaseSqlite
 from vocabulary import VocabularySqlite, iter_phrases, count_n_grams, Text
@@ -15,17 +15,15 @@ from utils_doc_results_db import get_tf_idf_from_exp
 
 import config
 
-def get_selection(K, tf_idf_db, claim_database, title_tf_idf_flag_normalise):
+def get_selection(tf_idf_db, claim_database, title_tf_idf_flag_normalise):
     # description: 
     # input
     #   - path_predicted_documents: 
     #   - K: 
-    flag_K = False
-    if 'K' in claim_database.settings:
-        if K in claim_database.settings['K']:
-            flag_K = True
-            print('claim database already exists for experiment')
-    if flag_K == False:
+
+    if claim_database.scoring_flag == True:
+        print('claim database already exists for experiment')
+    else:
         # === variables === #
         delimiter ='\k'
         method_tokenization = tf_idf_db.vocab.method_tokenization 
@@ -36,7 +34,7 @@ def get_selection(K, tf_idf_db, claim_database, title_tf_idf_flag_normalise):
         mydict_ids = SqliteDict(path_title_ids)
         mydict_tf_idf = SqliteDict(path_title_tf_idf)
         
-        if tf_idf_db.source == 'title' and title_tf_idf_flag_normalise == True:
+        if title_tf_idf_flag_normalise == True:
             mydict_total_tf_idf = dict_load_json(tf_idf_db.path_total_tf_idf_dict)
 
         batch_sln = 10000
@@ -67,7 +65,7 @@ def get_selection(K, tf_idf_db, claim_database, title_tf_idf_flag_normalise):
                     except KeyError:
                         dictionary[id] = tf_idf
 
-            if tf_idf_db.source == 'title' and title_tf_idf_flag_normalise == True:
+            if title_tf_idf_flag_normalise == True:
                 for id in dictionary:
                     total_tf_idf = mydict_total_tf_idf[str(id)]
                     dictionary[id] = dictionary[id] / float(total_tf_idf)
@@ -78,7 +76,7 @@ def get_selection(K, tf_idf_db, claim_database, title_tf_idf_flag_normalise):
             dictionary = {}
 
             # make K best selection based on score
-            selected_ids = sorted(range(len(tf_idf_list)), key=lambda l: tf_idf_list[l])[-K:]
+            selected_ids = sorted(range(len(tf_idf_list)), key=lambda l: tf_idf_list[l])[-claim_database.K:]
             selected_ids = [keys_list[l] for l in selected_ids]
 
             claim_dict = claim_database.get_claim_from_id(i)
@@ -87,8 +85,7 @@ def get_selection(K, tf_idf_db, claim_database, title_tf_idf_flag_normalise):
 
             i += 1
             
-        claim_database.set_K_flag(K)
-        # write_jsonl(path_predicted_documents, results)
+        claim_database.set_scoring_flag(True)
 
 def compute_score(claim_database, score_method, tf_idf_db):
     # description: 1. load the predictions. 2. iterate through claims and compute the score
@@ -282,67 +279,117 @@ def compute_score(claim_database, score_method, tf_idf_db):
     # write_jsonl(path_predicted_documents, results)
     return score
 
+class PerformanceTFIDF():
+    def __init__(self, wiki_database, experiment_nr, claim_data_set, K, score_method, title_tf_idf_normalise_flag):
+        # === process inputs === #
+        # self.wiki_database = wiki_database
+        self.experiment_nr = experiment_nr
+        self.claim_data_set = claim_data_set
+        self.K = K
+        self.score_method = score_method
+        self.title_tf_idf_normalise_flag = title_tf_idf_normalise_flag
+
+        # === process === #
+        print('PerformanceTFIDF', experiment_nr, claim_data_set, K, score_method, title_tf_idf_normalise_flag)
+        self.path_raw_data = os.path.join(config.ROOT, config.DATA_DIR, config.RAW_DATA_DIR)
+
+        with HiddenPrints():
+            self.tf_idf_db = get_tf_idf_from_exp(self.experiment_nr, wiki_database)
+
+        if self.title_tf_idf_normalise_flag == True:
+            self.path_dir_experiment = os.path.join(self.tf_idf_db.base_dir, 'results_experiment_' + self.claim_data_set + '_tf_idf_normalise_' + str(K))
+        elif self.title_tf_idf_normalise_flag == False:
+            self.path_dir_experiment = os.path.join(self.tf_idf_db.base_dir, 'results_' + self.claim_data_set + str(K))
+        else:
+            raise ValueError('tf idf normalise flag is not True or False', self.title_tf_idf_normalise_flag)
+
+        self.path_score_dict = os.path.join(self.path_dir_experiment, 'score.json')
+
+        mkdir_if_not_exist(self.path_dir_experiment)
+
+        if os.path.isfile(self.path_score_dict):
+            self.score_dict = dict_load_json(self.path_score_dict)
+        else:
+            self.score_dict = {}
+
+        self.claim_database = ClaimDatabase(path_dir_database = self.path_dir_experiment, path_raw_data = self.path_raw_data, claim_data_set = self.claim_data_set, K = K)
+
+        if self.score_method not in self.score_dict:
+            self.get_selection()
+            score = self.compute_score()
+            self.score_dict[score_method] = score 
+            self.save_score_dict()
+        else:
+            print('score already computed')
+
+    def save_score_dict(self):
+        dict_save_json(self.score_dict, self.path_score_dict)
+
+    def get_selection(self):
+        get_selection(self.tf_idf_db, self.claim_database, self.title_tf_idf_normalise_flag)
+
+    def compute_score(self):
+        compute_score(self.claim_database, self.score_method, self.tf_idf_db)
+
 if __name__ == '__main__':
     # === constants === #
     path_wiki_pages = os.path.join(config.ROOT, config.DATA_DIR, config.WIKI_PAGES_DIR, 'wiki-pages')
     path_wiki_database_dir = os.path.join(config.ROOT, config.DATA_DIR, config.DATABASE_DIR)
     
     # === variables === #
-    claim_data_set = 'dev'
-    experiment_nr_list = [31,32,33,34,35,36,37,38,39]
-    list_K = [5, 10, 20, 40, 100]
+    claim_data_set = 'dev' # 
+    experiment_nr_list = [31, 37] # [31,32,33,34,35,36,37,38,39]
+    list_K = [20, 100] # [5, 10, 20, 40, 100]
     score_list = ['e_score', 'f_score', 'e_score_labelled', 'f_score_labelled']
     title_tf_idf_flag_normalise_list = [True, False]
 
     # === process === #
     wiki_database = WikiDatabaseSqlite(path_wiki_database_dir, path_wiki_pages)
     
-    for title_tf_idf_flag_normalise in title_tf_idf_flag_normalise_list:
-        for experiment_nr in experiment_nr_list:
-            
-            with HiddenPrints():
-                tf_idf_db = get_tf_idf_from_exp(experiment_nr, wiki_database)
-
+    for title_tf_idf_normalise_flag in title_tf_idf_flag_normalise_list:
+        for experiment_nr in experiment_nr_list:          
             for K in list_K:
                 for score_method in score_list:
             
-                    if title_tf_idf_flag_normalise == True:
-                        dir_results = '01_results' + '_tf_idf_normalise_' + str(K)
-                    else:
-                        dir_results = '01_results_' + str(K)    
+                    PerformanceTFIDF(wiki_database, experiment_nr, claim_data_set, K, score_method, title_tf_idf_normalise_flag)
 
-                    dir_results = os.path.join(tf_idf_db.base_dir, dir_results)
+                    # if title_tf_idf_flag_normalise == True:
+                    #     dir_results = '01_results' + '_tf_idf_normalise_' + str(K)
+                    # else:
+                    #     dir_results = '01_results_' + str(K)    
+
+                    # dir_results = os.path.join(tf_idf_db.base_dir, dir_results)
                     
-                    if not os.path.isdir(dir_results):
-                        os.makedirs(dir_results)
+                    # if not os.path.isdir(dir_results):
+                    #     os.makedirs(dir_results)
 
-                    file_name = 'score.json'
-                    path_score = os.path.join(dir_results, file_name)
+                    # file_name = 'score.json'
+                    # path_score = os.path.join(dir_results, file_name)
 
-                    if os.path.isfile(path_score):
-                        score_dict = dict_load_json(path_score)
-                    else:
-                        score_dict = {}
+                    # if os.path.isfile(path_score):
+                    #     score_dict = dict_load_json(path_score)
+                    # else:
+                    #     score_dict = {}
 
-                    path_dir_database = dir_results
-                    path_raw_data = os.path.join(config.ROOT, config.DATA_DIR, config.RAW_DATA_DIR)
-                    print('path', path_dir_database)
-                    claim_database = ClaimDatabase(path_dir_database = path_dir_database, path_raw_data = path_raw_data, claim_data_set = claim_data_set)
+                    # path_dir_database = dir_results
+                    # path_raw_data = os.path.join(config.ROOT, config.DATA_DIR, config.RAW_DATA_DIR)
+                    # print('path', path_dir_database)
+                    # claim_database = ClaimDatabase(path_dir_database = path_dir_database, path_raw_data = path_raw_data, claim_data_set = claim_data_set, K = K)
 
-                    experiment_performed = False
-                    if str(K) in score_dict:
-                        if score_method in score_dict[str(K)]:
-                            experiment_performed = True
+                    # experiment_performed = False
+                    # if str(K) in score_dict:
+                    #     if score_method in score_dict[str(K)]:
+                    #         experiment_performed = True
 
-                    if experiment_performed == False:
-                        get_selection(K, tf_idf_db, claim_database, title_tf_idf_flag_normalise)
+                    # if experiment_performed == False:
+                    #     get_selection(tf_idf_db, claim_database, title_tf_idf_flag_normalise)
                     
-                        score = compute_score(claim_database, score_method, tf_idf_db)
+                    #     score = compute_score(claim_database, score_method, tf_idf_db)
                         
-                        if str(K) not in score_dict:
-                            score_dict[str(K)] = {}
+                    #     if str(K) not in score_dict:
+                    #         score_dict[str(K)] = {}
 
-                        score_dict[str(K)][score_method] = score 
+                    #     score_dict[str(K)][score_method] = score 
 
-                        dict_save_json(score_dict, path_score)
+                    #     dict_save_json(score_dict, path_score)
 

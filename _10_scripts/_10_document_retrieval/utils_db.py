@@ -2,6 +2,12 @@ import os
 import json
 import pickle 
 import sys
+
+def mkdir_if_not_exist(path_dir):        
+    try:
+        os.makedirs(path_dir, exist_ok=True)
+    except FileExistsError:
+        print('folder already exists:', path_dir)
         
 def num_files_in_directory(path_directory):
     # description: find the number of files in directory
