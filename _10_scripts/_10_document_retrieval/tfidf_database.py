@@ -280,8 +280,7 @@ class TFIDFDatabaseSqlite:
                         self.id_2_total_tf_idf[k] = tf_idf_total
                     total_tf_idf_dict = {}
 
-        if self.source == 'title':
-            dict_save_json(self.id_2_total_tf_idf, self.path_total_tf_idf_dict)
+        dict_save_json(self.id_2_total_tf_idf, self.path_total_tf_idf_dict)
 
 class TFIDF(object):
     # https://en.wikipedia.org/wiki/Tf%E2%80%93idf

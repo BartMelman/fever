@@ -72,6 +72,13 @@ def get_empty_tag_dict():
         empty_tag_dict[str(pos_id)] = 0
     return empty_tag_dict
 
+def get_empty_tag_dict_bigrams():
+    tag_2_id_dict = get_tag_2_id_dict_bigrams()
+    empty_tag_dict = {}
+    for pos_id in range(len(tag_2_id_dict)):
+        empty_tag_dict[str(pos_id)] = 0
+    return empty_tag_dict
+
 def get_tag_2_id_dict():
     tag_2_id_dict = {}
     tag_list = ['ADJ', 'ADP', 'ADV', 'AUX', 'CONJ', 'CCONJ', 'DET', 'INTJ', 'NOUN', 'NUM', 'PART', 'PRON', 'PROPN', 'PUNCT', 'SCONJ', 'SYM', 'VERB', 'X', 'SPACE']
@@ -80,6 +87,18 @@ def get_tag_2_id_dict():
         tag = tag_list[i]
         tag_2_id_dict[tag] = i
     return tag_2_id_dict
+
+def get_tag_2_id_dict_bigrams(tag_list_selected):
+    tag_2_id_dict = {}
+
+    for i in range(len(tag_list)):
+        for j in range(len(tag_list))
+            tag1 = tag_list_selected[i]
+            tag2 = tag_list_selected[j]
+            tag_combined = tag1 + tag2
+            tag_2_id_dict[tag_combined] = i
+    return tag_2_id_dict
+
 
 def get_vocab_tf_idf_from_exp(experiment_nr, wiki_database):
     tf_idf_db = get_tf_idf_from_exp(experiment_nr, wiki_database)

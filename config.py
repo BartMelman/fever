@@ -22,6 +22,7 @@ CONFIG_DIR='_02_configs'
 MODEL_DIR='_03_models'
 
 RESULTS_DIR='_04_results'
+SCORE_COMBINATION='01_score_combination'
 DOC_RET_DIR='_01_document_retrieval' 
 NLP_DIR='_01_NLP'
 TF_IDF_DIR='_01_TF_IDF'
