@@ -29,30 +29,23 @@ def get_tag_word_from_wordtag(key, delimiter):
     word = phrase[1]
     return tag, word
 
-def get_tag_dict(claim_data_set, n_gram, path_tags, wiki_database):
-
+def get_tag_dict(claim_database, n_gram, path_tags, wiki_database):
     if os.path.isfile(path_tags):
         print('tags file already exists')
         dictionary_tags = dict_load_json(path_tags)
     else:
-        
-        path_dev_set = os.path.join(config.ROOT, config.DATA_DIR, config.RAW_DATA_DIR, claim_data_set + ".jsonl")
-        results = load_jsonl(path_dev_set)
-
-        tag_2_id_dict = get_tag_2_id_dict()
         if n_gram == 1:
             experiment_nr = 37
+            tag_2_id_dict = get_tag_2_id_dict_unigrams()
         else:
             raise ValueError('train model with tags for n_grams = 2')
 
         with HiddenPrints():
             vocab, tf_idf_db = get_vocab_tf_idf_from_exp(experiment_nr, wiki_database)
 
-
         dictionary_tags = {}
-        for claim_nr in tqdm(range(len(results)), desc = 'tags claims'):
-            claim = Claim(results[claim_nr])
-
+        for claim_nr in tqdm(range(claim_database.nr_claims), desc = 'tags claims'):
+            claim = Claim(claim_database.get_claim_from_id(claim_nr))
             doc = vocab.wiki_database.nlp(claim.claim)
             claim_doc_tokenizer = ClaimDocTokenizer(doc, vocab.delimiter_words)
             n_grams, nr_words = claim_doc_tokenizer.get_n_grams(vocab.method_tokenization, tf_idf_db.vocab.n_gram)
@@ -65,21 +58,57 @@ def get_tag_dict(claim_data_set, n_gram, path_tags, wiki_database):
         dict_save_json(dictionary_tags, path_tags)
     return dictionary_tags
 
-def get_empty_tag_dict():
-    tag_2_id_dict = get_tag_2_id_dict()
+
+
+
+
+    # if os.path.isfile(path_tags):
+    #     print('tags file already exists')
+    #     dictionary_tags = dict_load_json(path_tags)
+    # else:
+        
+    #     path_dev_set = os.path.join(config.ROOT, config.DATA_DIR, config.RAW_DATA_DIR, claim_data_set + ".jsonl")
+    #     results = load_jsonl(path_dev_set)
+
+    #     if n_gram == 1:
+    #         experiment_nr = 37
+    #         tag_2_id_dict = get_tag_2_id_dict_unigrams()
+    #     else:
+    #         raise ValueError('train model with tags for n_grams = 2')
+
+    #     with HiddenPrints():
+    #         vocab, tf_idf_db = get_vocab_tf_idf_from_exp(experiment_nr, wiki_database)
+
+    #     dictionary_tags = {}
+    #     for claim_nr in tqdm(range(len(results)), desc = 'tags claims'):
+    #         claim = Claim(results[claim_nr])
+
+    #         doc = vocab.wiki_database.nlp(claim.claim)
+    #         claim_doc_tokenizer = ClaimDocTokenizer(doc, vocab.delimiter_words)
+    #         n_grams, nr_words = claim_doc_tokenizer.get_n_grams(vocab.method_tokenization, tf_idf_db.vocab.n_gram)
+    #         tag_list = []
+    #         for key, count in n_grams.items():
+    #             tag, word = get_tag_word_from_wordtag(key, vocab.delimiter_tag_word)
+    #             tag_list.append(tag)
+
+    #         dictionary_tags[str(claim_nr)] = tag_list
+    #     dict_save_json(dictionary_tags, path_tags)
+    # return dictionary_tags
+
+def get_empty_tag_dict(n_gram):
+    if n_gram == 1:
+        tag_2_id_dict = get_tag_2_id_dict_unigrams()
+    elif n_gram == 2:
+        tag_2_id_dict = get_tag_2_id_dict_bigrams()
+    else:
+        raise ValueError('code written for unigrams and bigrams', n_gram)
+
     empty_tag_dict = {}
     for pos_id in range(len(tag_2_id_dict)):
         empty_tag_dict[str(pos_id)] = 0
     return empty_tag_dict
 
-def get_empty_tag_dict_bigrams():
-    tag_2_id_dict = get_tag_2_id_dict_bigrams()
-    empty_tag_dict = {}
-    for pos_id in range(len(tag_2_id_dict)):
-        empty_tag_dict[str(pos_id)] = 0
-    return empty_tag_dict
-
-def get_tag_2_id_dict():
+def get_tag_2_id_dict_unigrams():
     tag_2_id_dict = {}
     tag_list = ['ADJ', 'ADP', 'ADV', 'AUX', 'CONJ', 'CCONJ', 'DET', 'INTJ', 'NOUN', 'NUM', 'PART', 'PRON', 'PROPN', 'PUNCT', 'SCONJ', 'SYM', 'VERB', 'X', 'SPACE']
 
@@ -91,12 +120,12 @@ def get_tag_2_id_dict():
 def get_tag_2_id_dict_bigrams(tag_list_selected):
     tag_2_id_dict = {}
 
-    for i in range(len(tag_list)):
-        for j in range(len(tag_list))
+    for i in range(len(tag_list_selected)):
+        for j in range(len(tag_list_selected)):
             tag1 = tag_list_selected[i]
             tag2 = tag_list_selected[j]
             tag_combined = tag1 + tag2
-            tag_2_id_dict[tag_combined] = i
+            tag_2_id_dict[tag_combined] = i * len(tag_list_selected) + j
     return tag_2_id_dict
 
 

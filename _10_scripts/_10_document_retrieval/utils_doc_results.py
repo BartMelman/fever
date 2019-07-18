@@ -56,7 +56,7 @@ def get_tag_word_from_wordtag(key, delimiter):
     return splitted_key[0], splitted_key[1]
 
 class ClaimDatabase:
-    def __init__(self, path_dir_database, path_raw_data, claim_data_set, K):
+    def __init__(self, path_dir_database, path_raw_data, claim_data_set, K = None):
         # description: create a database in which the 
         self.path_dir_database = path_dir_database
         self.path_raw_data = path_raw_data
@@ -103,7 +103,7 @@ class ClaimDatabase:
         else:
             settings = {}
             settings['nr_claims'] = None
-            settings['scoring_flag'] = False
+            settings['scoring_flag'] = config.FALSE
         
         settings['nr_claims'] = self.nr_claims
         dict_save_json(settings, self.path_settings)
@@ -133,7 +133,8 @@ class ClaimDatabase:
         print('convert scoring flag from', self.settings['scoring_flag'], ' to ', scoring_flag)
         if scoring_flag == self.settings['scoring_flag']:
             print('no need to save, because the flags are the same')
-        elif scoring_flag in [False, True]:
+        elif scoring_flag in [config.FALSE, config.TRUE]:
+            self.settings['scoring_flag'] = scoring_flag
             with HiddenPrints():
                 dict_save_json(self.settings, self.path_settings)
 
