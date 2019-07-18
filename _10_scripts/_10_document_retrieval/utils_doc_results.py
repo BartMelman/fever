@@ -62,7 +62,7 @@ class ClaimDatabase:
         self.path_raw_data = path_raw_data
         self.claim_data_set = claim_data_set
         self.K = K
-
+        
         self.path_dir_database_claims = os.path.join(self.path_dir_database, 'claims') #'claims_' + str(self.claim_data_set) + '_' + str(K))
         self.path_raw_claims = os.path.join(path_raw_data, str(self.claim_data_set) + '.jsonl')
         self.path_settings = os.path.join(self.path_dir_database_claims, 'settings.json')
