@@ -265,8 +265,8 @@ class ClaimTensorDatabase():
         self.path_claims_dir = os.path.join(self.path_setup_dir, 'claims')
         self.path_label_correct_evidence_false_dir = os.path.join(self.path_setup_dir, self.claim_data_set + '_correct_false_tensor')
         self.path_label_correct_evidence_true_dir = os.path.join(self.path_setup_dir, self.claim_data_set + '_correct_true_tensor')
-        self.path_label_refuted_evidence_false_dir = os.path.join(self.path_setup_dir, self.claim_data_set + '_correct_false_tensor')
-        self.path_label_refuted_evidence_true_dir = os.path.join(self.path_setup_dir, self.claim_data_set + '_correct_true_tensor')
+        self.path_label_refuted_evidence_false_dir = os.path.join(self.path_setup_dir, self.claim_data_set + '_refuted_false_tensor')
+        self.path_label_refuted_evidence_true_dir = os.path.join(self.path_setup_dir, self.claim_data_set + '_refuted_true_tensor')
         self.path_settings_dict = os.path.join(self.path_setup_dir, 'settings.json')
         self.tag_list_selected = ["INTJ", "NOUN", "NUM", "PROPN", "SYM", "X", "ADJ"]
 
@@ -452,8 +452,6 @@ class ClaimTensorDatabase():
 
                     torch.save(tensor_variable, file_name_variables)
                     torch.save(tensor_label, file_name_label)
-                    torch.save(tensor_variable, file_name_combined_variables)
-                    torch.save(tensor_label, file_name_combined_label)
                     
                     idx += 1
 

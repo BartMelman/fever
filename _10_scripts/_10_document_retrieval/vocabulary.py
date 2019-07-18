@@ -72,6 +72,8 @@ class VocabularySqlite:
         for method in self.method_tokenization:
             if method == 'tokenize':
                 folder_name = folder_name + '_t'
+            elif method == 'tokenize_text_pos':
+                folder_name = folder_name + '_tp'
             elif method == 'tokenize_lemma':
                 folder_name = folder_name + '_tl'
             elif method == 'tokenize_lemma_list_accepted':

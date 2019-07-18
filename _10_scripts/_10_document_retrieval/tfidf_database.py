@@ -211,7 +211,7 @@ class TFIDFDatabaseSqlite:
                                 
                             elif self.n_gram == 2:
                                 if self.method_tokenization[0] in self.list_pos_tokenization: 
-                                    if self.tags_in_db_flag == 1:
+                                    if self.tags_in_db_flag == 0:
                                         phrase = key.split(self.delimiter_words)
                                         tag1 = phrase[0].split(self.delimiter_tag_word)[0]
                                         tag2 = phrase[1].split(self.delimiter_tag_word)[0]
