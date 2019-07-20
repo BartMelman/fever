@@ -119,39 +119,39 @@ class ClaimFile:
                 with HiddenPrints():
                     dictionary = get_dict_from_n_gram([word], mydict_ids, mydict_tf_idf, tf_idf_db)
 
-                for id, tf_idf_value in dictionary.items():
-                    # only save the tf idf of ids in the selected id list
-                    if id in self.claim_dict['ids_selected']:
-                        # save number of words claim/title/text and total tf idf
-                        if str(id) not in self.claim_dict[source]['1_gram']:
-                            self.claim_dict[source]['1_gram'][str(id)] = {}
+                for id in self.claim_dict['ids_selected']:
+                    # save number of words claim/title/text and total tf idf
+                    if str(id) not in self.claim_dict[source]['1_gram']:
+                        self.claim_dict[source]['1_gram'][str(id)] = {}
 
-                            if source == 'title':
-                                text = tf_idf_db.vocab.wiki_database.get_title_from_id(id)
-                            elif source == 'text':
-                                text = tf_idf_db.vocab.wiki_database.get_text_from_id(id)
-                            else:
-                                raise ValueError('source not in options', source)
+                        if source == 'title':
+                            text = tf_idf_db.vocab.wiki_database.get_title_from_id(id)
+                        elif source == 'text':
+                            text = tf_idf_db.vocab.wiki_database.get_text_from_id(id)
+                        else:
+                            raise ValueError('source not in options', source)
 
-                            doc = tf_idf_db.vocab.wiki_database.nlp(text)
-                            claim_doc_tokenizer = ClaimDocTokenizer(doc, tf_idf_db.vocab.delimiter_words)
-                            _, nr_words_text_source = claim_doc_tokenizer.get_n_grams(tf_idf_db.vocab.method_tokenization, tf_idf_db.vocab.n_gram)
+                        doc = tf_idf_db.vocab.wiki_database.nlp(text)
+                        claim_doc_tokenizer = ClaimDocTokenizer(doc, tf_idf_db.vocab.delimiter_words)
+                        _, nr_words_text_source = claim_doc_tokenizer.get_n_grams(tf_idf_db.vocab.method_tokenization, tf_idf_db.vocab.n_gram)
 
-                            self.claim_dict[source]['1_gram'][str(id)]['nr_words'] = nr_words_text_source
+                        self.claim_dict[source]['1_gram'][str(id)]['nr_words'] = nr_words_text_source
 
-                        # create empty tag dictionary for method for id if does not exist
-                        if method_tokenization not in self.claim_dict[source]['1_gram'][str(id)].keys():
-                            self.claim_dict[source]['1_gram'][str(id)][method_tokenization] = {}
-                            if tf_idf_name not in self.claim_dict[source]['1_gram'][str(id)][method_tokenization].keys():
-                                self.claim_dict[source]['1_gram'][str(id)][method_tokenization][tf_idf_name] = get_empty_tag_dict(n_gram = 1)
+                    # create empty tag dictionary for method for id if does not exist
+                    if method_tokenization not in self.claim_dict[source]['1_gram'][str(id)].keys():
+                        self.claim_dict[source]['1_gram'][str(id)][method_tokenization] = {}
+                    
+                    if tf_idf_name not in self.claim_dict[source]['1_gram'][str(id)][method_tokenization].keys():
+                        self.claim_dict[source]['1_gram'][str(id)][method_tokenization][tf_idf_name] = get_empty_tag_dict(n_gram = 1)
 
-                        # enter total tf_idf if not in dictionary 
-                        if 'total_tf_idf' not in self.claim_dict[source]['1_gram'][str(id)][method_tokenization][tf_idf_name]:
-                            self.claim_dict[source]['1_gram'][str(id)][method_tokenization][tf_idf_name]['total_tf_idf'] = tf_idf_db.id_2_total_tf_idf[str(id)]
+                    # enter total tf_idf if not in dictionary 
+                    if 'total_tf_idf' not in self.claim_dict[source]['1_gram'][str(id)][method_tokenization][tf_idf_name]:
+                        self.claim_dict[source]['1_gram'][str(id)][method_tokenization][tf_idf_name]['total_tf_idf'] = tf_idf_db.id_2_total_tf_idf[str(id)]
 
-                        # save tf_idf value 
-                        self.claim_dict[source]['1_gram'][str(id)][method_tokenization][tf_idf_name][str(pos_id)] += tf_idf_value   
-        
+                    if id in dictionary:
+                        tf_idf_value = dictionary[id]
+                        self.claim_dict[source]['1_gram'][str(id)][method_tokenization][tf_idf_name][str(pos_id)] += tf_idf_value 
+
         elif tf_idf_db.n_gram == 2:
             doc = tf_idf_db.vocab.wiki_database.nlp(self.claim_dict['claim']['text'])
 
@@ -245,9 +245,6 @@ class ClaimFile:
 
 class ClaimTensorDatabase():
     def __init__(self, path_wiki_pages, path_wiki_database_dir, setup):
-        # === process inputs === #
-        self.claim_data_set = claim_data_set
-
         # === variables === #
         if setup == 1:
             self.claim_data_set = 'dev'
@@ -255,8 +252,13 @@ class ClaimTensorDatabase():
         elif setup == 2:
             self.claim_data_set = 'dev'
             self.experiment_list = [31, 37, 41]
+        elif setup == 3:
+            self.claim_data_set = 'dev'
+            self.experiment_list = [31, 32, 33, 34, 35, 36, 37]
 
         # === process === #
+        self.path_wiki_pages = path_wiki_pages
+        self.path_wiki_database_dir = path_wiki_database_dir
         self.path_dir_claim_database = os.path.join(config.ROOT, config.DATA_DIR, config.DATABASE_DIR)
         self.path_raw_claim_data = os.path.join(config.ROOT, config.DATA_DIR, config.RAW_DATA_DIR)
         self.path_results_dir = os.path.join(config.ROOT, config.RESULTS_DIR, config.SCORE_COMBINATION_DIR)
@@ -268,6 +270,7 @@ class ClaimTensorDatabase():
         self.path_label_refuted_evidence_false_dir = os.path.join(self.path_setup_dir, self.claim_data_set + '_refuted_false_tensor')
         self.path_label_refuted_evidence_true_dir = os.path.join(self.path_setup_dir, self.claim_data_set + '_refuted_true_tensor')
         self.path_settings_dict = os.path.join(self.path_setup_dir, 'settings.json')
+        self.path_dict_variable_list_dir = os.path.join(self.path_setup_dir, self.claim_data_set + '_variables_labels')
         self.tag_list_selected = ["INTJ", "NOUN", "NUM", "PROPN", "SYM", "X", "ADJ"]
 
         if not os.path.isdir(self.path_setup_dir):
@@ -278,16 +281,16 @@ class ClaimTensorDatabase():
             mkdir_if_not_exist(self.path_label_correct_evidence_true_dir)
             mkdir_if_not_exist(self.path_label_refuted_evidence_false_dir)
             mkdir_if_not_exist(self.path_label_refuted_evidence_true_dir)
+            mkdir_if_not_exist(self.path_dict_variable_list_dir)
             self.get_results()
         else:
             self.settings = dict_load_json(self.path_settings_dict)
         
-
     def get_results(self):
-        self.wiki_database = WikiDatabaseSqlite(path_wiki_database_dir, path_wiki_pages)
+        self.wiki_database = WikiDatabaseSqlite(self.path_wiki_database_dir, self.path_wiki_pages)
         self.claim_database = ClaimDatabase(path_dir_database = self.path_dir_claim_database, path_raw_data = self.path_raw_claim_data, claim_data_set = self.claim_data_set)
 
-        self.claim_database.nr_claims = 100
+        self.claim_database.nr_claims = 1000
         self.nr_claims = self.claim_database.nr_claims
 
         self.tag_2_id_unigram_dict = get_tag_2_id_dict_unigrams()
@@ -402,6 +405,10 @@ class ClaimTensorDatabase():
             file = ClaimFile(id = id, path_dir_files = self.path_claims_dir)
 
             label = file.claim_dict['claim']['label']
+            dict_id = {}
+            dict_id['id'] = id
+            dict_id['selected_documents']={}
+            path_dict_variable_list = os.path.join(self.path_dict_variable_list_dir, str(id) + '.json')
 
             if label != 'NOT ENOUGH INFO':
                 label_nr = label_2_num(label)
@@ -436,25 +443,33 @@ class ClaimTensorDatabase():
 
                     _, values_claim = get_list_properties(file.claim_dict['claim']['1_gram'], [], [], [])
                     list_variables += values_claim
-
-                    if id_document in file.claim_dict['title']['1_gram']:
-                        _, values_title = get_list_properties(file.claim_dict['title']['1_gram'][id_document], [], [], [])
+                    if str(id_document) in file.claim_dict['title']['1_gram']:
+                        _, values_title = get_list_properties(file.claim_dict['title']['1_gram'][str(id_document)], [], [], [])
                         list_variables += values_title
 
-                    if id_document in file.claim_dict['text']['1_gram']:
-                        _, values_text  = get_list_properties(file.claim_dict['text']['1_gram'][id_document], [], [], [])
+                    if str(id_document) in file.claim_dict['text']['1_gram']:
+                        _, values_text  = get_list_properties(file.claim_dict['text']['1_gram'][str(id_document)], [], [], [])
                         list_variables += values_text
 
+                    dict_id['selected_documents'][str(id_document)]={}
+                    dict_id['selected_documents'][str(id_document)]['list_variables']=list_variables
+                    dict_id['selected_documents'][str(id_document)]['list_variables']=label_nr
 
-                    numpy_array = np.array(list_variables)
-                    tensor_variable = torch.from_numpy(numpy_array)      
-                    tensor_label = torch.tensor([label_nr])
+                    tensor_variable = torch.FloatTensor(list_variables)  
+                    tensor_label = torch.LongTensor([label_nr])
 
                     torch.save(tensor_variable, file_name_variables)
                     torch.save(tensor_label, file_name_label)
                     
                     idx += 1
+                dict_save_json(dict_id, path_dict_variable_list)
 
+        nr_variables = 0
+        list_keys = ['observation_key_list_claim', 'observation_key_list_title', 'observation_key_list_text']
+        for key in list_keys:
+            nr_variables += len(settings_dict[key])
+
+        settings_dict['nr_variables'] = nr_variables
         settings_dict['nr_total'] = idx
         settings_dict['nr_correct_false'] = nr_correct_false
         settings_dict['nr_correct_true'] = nr_correct_true

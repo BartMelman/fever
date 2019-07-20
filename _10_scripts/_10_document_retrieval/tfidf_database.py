@@ -219,7 +219,7 @@ class TFIDFDatabaseSqlite:
                                         word2 = phrase[1].split(self.delimiter_tag_word)[1]
                                         word = self.delimiter_words.join([word1, word2])
                                         if (tag1 in self.tag_list_selected) and (tag2 in self.tag_list_selected):
-                                            count_tf = tf_dict[word]
+                                            count_tf = tf_dict[key]
                                             try:
                                                 count_doc = dict_document_count[word]
                                             except KeyError:

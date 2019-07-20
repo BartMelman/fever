@@ -338,8 +338,8 @@ if __name__ == '__main__':
     
     # === variables === #
     claim_data_set = 'dev' # 
-    experiment_nr_list = [31, 37] # [31, 37] # [31,32,33,34,35,36,37,38,39]
-    list_K = [5, 10] # [5, 10, 20, 40, 100]
+    experiment_nr_list = [31, 32, 33, 34, 35, 36, 37, 38, 39] # [31, 37] # [31,32,33,34,35,36,37,38,39]
+    list_K = [5, 10, 20, 40, 100]
     score_list = ['e_score', 'f_score', 'e_score_labelled', 'f_score_labelled']
     title_tf_idf_flag_normalise_list = [True, False]
 
