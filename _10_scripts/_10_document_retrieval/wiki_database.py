@@ -241,7 +241,7 @@ class Text:
     def tokenize_tag(self):
         return [word.pos_ for word in self.text]
 
-def get_dict_lines(self, input_wiki_page_dict)
+def get_dict_lines(self, input_wiki_page_dict):
     output_wiki_page_dict = {}
         line_nr = 0
         for lines_list in input_wiki_page_dict['lines'].split('\n'):
