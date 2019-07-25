@@ -6,7 +6,7 @@
     "threshold" : 0.001,
     "vocabulary_source" : "text",
     "tf_idf_source" : "text",
-    "method_tokenization" : ["tokenize"],
+    "method_tokenization" : ["tokenize_text_pos"],
     "method_tf" : "term_frequency",
     "method_df" : "inverse_document_frequency",
     "tags_in_db_flag" : 0,

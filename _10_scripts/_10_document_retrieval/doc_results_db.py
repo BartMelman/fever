@@ -52,12 +52,22 @@ class ClaimFile:
                         id = wiki_database.get_id_from_title(title)
                         id_list.append(id)
             self.claim_dict['ids_correct_docs'] = id_list
-            self.claim_dict['ids_selected'] = id_list
-        
-        # === add from selected_ids in claim_dictionary === #    
 
         if 'docs_selected' in claim_dictionary:
-            self.claim_dict['ids_selected'] += claim_dictionary['docs_selected']
+            if 'ids_generated' in self.claim_dict:
+                self.claim_dict['ids_generated'] += claim_dictionary['docs_selected']
+            else:
+                self.claim_dict['ids_generated'] = claim_dictionary['docs_selected']
+
+        if ('ids_correct_docs' in self.claim_dict) and ('ids_generated' in self.claim_dict):
+            self.claim_dict['ids_selected'] = list(set(self.claim_dict['ids_correct_docs'] + 
+                self.claim_dict['ids_generated']))
+        elif 'ids_correct_docs' in self.claim_dict:
+            self.claim_dict['ids_selected'] = self.claim_dict['ids_correct_docs']
+        elif 'ids_generated' in self.claim_dict:
+            self.claim_dict['ids_selected'] = self.claim_dict['ids_generated']
+        else: 
+            raise ValueError('one of the options should be valid')
 
         # === save === #
         self.save_claim()
@@ -132,8 +142,8 @@ class ClaimFile:
                             raise ValueError('source not in options', source)
 
                         doc = tf_idf_db.vocab.wiki_database.nlp(text)
-                        claim_doc_tokenizer = ClaimDocTokenizer(doc, tf_idf_db.vocab.delimiter_words)
-                        _, nr_words_text_source = claim_doc_tokenizer.get_n_grams(tf_idf_db.vocab.method_tokenization, tf_idf_db.vocab.n_gram)
+                        claim_doc_tokenizer = ClaimDocTokenizer(doc, tf_idf_db.vocab.delimiter_words, tf_idf_db.delimiter_tag_word, tf_idf_db.list_pos_tokenization)
+                        _, nr_words_text_source = claim_doc_tokenizer.get_n_grams(tf_idf_db.vocab.method_tokenization, tf_idf_db.vocab.n_gram, tf_idf_db.tags_in_db_flag)
 
                         self.claim_dict[source]['1_gram'][str(id)]['nr_words'] = nr_words_text_source
 
@@ -203,8 +213,8 @@ class ClaimFile:
     def process_nr_words_per_pos(self, tf_idf_db, tag_2_id_dict):
         if tf_idf_db.n_gram == 1:
             doc = tf_idf_db.vocab.wiki_database.nlp(self.claim_dict['claim']['text'])
-            claim_doc_tokenizer = ClaimDocTokenizer(doc, tf_idf_db.vocab.delimiter_words)
-            n_grams_dict, nr_words = claim_doc_tokenizer.get_n_grams(tf_idf_db.vocab.method_tokenization, tf_idf_db.vocab.n_gram)
+            claim_doc_tokenizer = ClaimDocTokenizer(doc, tf_idf_db.vocab.delimiter_words, tf_idf_db.delimiter_tag_word, tf_idf_db.list_pos_tokenization)
+            n_grams_dict, nr_words = claim_doc_tokenizer.get_n_grams(tf_idf_db.vocab.method_tokenization, tf_idf_db.vocab.n_gram, tf_idf_db.tags_in_db_flag)
 
             self.claim_dict['claim']['1_gram']['nr_words'] = sum(n_grams_dict.values())
             
@@ -216,8 +226,8 @@ class ClaimFile:
 
         elif tf_idf_db.n_gram == 2:
             doc = tf_idf_db.vocab.wiki_database.nlp(self.claim_dict['claim']['text'])
-            claim_doc_tokenizer = ClaimDocTokenizer(doc, tf_idf_db.vocab.delimiter_words)
-            n_grams_dict, nr_words = claim_doc_tokenizer.get_n_grams(tf_idf_db.vocab.method_tokenization, tf_idf_db.vocab.n_gram)
+            claim_doc_tokenizer = ClaimDocTokenizer(doc, tf_idf_db.vocab.delimiter_words, tf_idf_db.delimiter_tag_word, tf_idf_db.list_pos_tokenization)
+            n_grams_dict, nr_words = claim_doc_tokenizer.get_n_grams(tf_idf_db.vocab.method_tokenization, tf_idf_db.vocab.n_gram, tf_idf_db.tags_in_db_flag)
 
             self.claim_dict['claim']['1_gram']['nr_words'] = sum(n_grams_dict.values())
             
@@ -244,27 +254,28 @@ class ClaimFile:
             dict_save_json(self.claim_dict, self.path_claim)
 
 class ClaimTensorDatabase():
-    def __init__(self, path_wiki_pages, path_wiki_database_dir, setup):
+    def __init__(self, setup, wiki_database, claim_data_set, selection_generation_or_selected, selection_experiment = 31, selection_K = 100):
         # === variables === #
         if setup == 1:
-            self.claim_data_set = 'dev'
             self.experiment_list = [31, 37] # [31,32,33,34,35,36,37]
         elif setup == 2:
-            self.claim_data_set = 'dev'
             self.experiment_list = [31, 37, 41]
         elif setup == 3:
-            self.claim_data_set = 'dev'
             self.experiment_list = [31, 32, 33, 34, 35, 36, 37]
 
+        # --- process inputs --- #
+        self.claim_data_set = claim_data_set
+        self.selection_experiment = selection_experiment
+        self.selection_K = selection_K
+        self.selection_generation_or_selected = selection_generation_or_selected
+
         # === process === #
-        self.path_wiki_pages = path_wiki_pages
-        self.path_wiki_database_dir = path_wiki_database_dir
         self.path_dir_claim_database = os.path.join(config.ROOT, config.DATA_DIR, config.DATABASE_DIR)
         self.path_raw_claim_data = os.path.join(config.ROOT, config.DATA_DIR, config.RAW_DATA_DIR)
         self.path_results_dir = os.path.join(config.ROOT, config.RESULTS_DIR, config.SCORE_COMBINATION_DIR)
-        self.path_setup_dir = os.path.join(self.path_results_dir, 'setup_' + str(setup))
+        self.path_setup_dir = os.path.join(self.path_results_dir, 'setup_' + str(self.claim_data_set) + '_' + str(setup) + '_' + str(self.selection_experiment) + '_' + str(self.selection_K) + '_' + selection_generation_or_selected)
         self.path_tags_unigram = os.path.join(self.path_setup_dir, 'tags_' + self.claim_data_set + '_n_gram_' + str(1) + '.json')
-        self.path_claims_dir = os.path.join(self.path_setup_dir, 'claims')
+        self.path_claims_dir = os.path.join(self.path_setup_dir, 'claims_tensor_db_' + self.claim_data_set)
         self.path_label_correct_evidence_false_dir = os.path.join(self.path_setup_dir, self.claim_data_set + '_correct_false_tensor')
         self.path_label_correct_evidence_true_dir = os.path.join(self.path_setup_dir, self.claim_data_set + '_correct_true_tensor')
         self.path_label_refuted_evidence_false_dir = os.path.join(self.path_setup_dir, self.claim_data_set + '_refuted_false_tensor')
@@ -282,12 +293,12 @@ class ClaimTensorDatabase():
             mkdir_if_not_exist(self.path_label_refuted_evidence_false_dir)
             mkdir_if_not_exist(self.path_label_refuted_evidence_true_dir)
             mkdir_if_not_exist(self.path_dict_variable_list_dir)
-            self.get_results()
+            self.get_results(wiki_database)
         else:
             self.settings = dict_load_json(self.path_settings_dict)
         
-    def get_results(self):
-        self.wiki_database = WikiDatabaseSqlite(self.path_wiki_database_dir, self.path_wiki_pages)
+    def get_results(self, wiki_database):
+        # self.wiki_database = WikiDatabaseSqlite(self.path_wiki_database_dir, self.path_wiki_pages)
         self.claim_database = ClaimDatabase(path_dir_database = self.path_dir_claim_database, path_raw_data = self.path_raw_claim_data, claim_data_set = self.claim_data_set)
 
         self.claim_database.nr_claims = 1000
@@ -295,32 +306,33 @@ class ClaimTensorDatabase():
 
         self.tag_2_id_unigram_dict = get_tag_2_id_dict_unigrams()
         self.tag_2_id_bigram_dict = get_tag_2_id_dict_bigrams(self.tag_list_selected)
-        self.tag_dict_unigrams = get_tag_dict(self.claim_database, 1, self.path_tags_unigram, self.wiki_database)
-        self.process_claim_tag_list()
-        self.process_nr_words_per_tag(n_gram = 1)
+        self.tag_dict_unigrams = get_tag_dict(self.claim_database, 1, self.path_tags_unigram, wiki_database)
+        self.process_claim_tag_list(wiki_database)
+        self.process_nr_words_per_tag(n_gram = 1, wiki_database = wiki_database)
         # self.process_nr_words_per_tag(n_gram = 2)
-        self.process_claims_in_selection_list(experiment_nr = 37, K = 5, score_method = 'f_score', title_tf_idf_normalise_flag = False)
-        self.process_selected_ids()
+        self.process_claims_in_selection_list(experiment_nr = self.selection_experiment, K = self.selection_K, score_method = 'f_score', 
+            title_tf_idf_normalise_flag = False, wiki_database = wiki_database)
+        self.process_selected_ids(wiki_database)
         self.save_2_tensor()
 
 
-    def process_claims_in_selection_list(self, experiment_nr, K, score_method, title_tf_idf_normalise_flag):
+    def process_claims_in_selection_list(self, experiment_nr, K, score_method, title_tf_idf_normalise_flag, wiki_database):
         # description: add documents which are close to the claim to the dataset
         # input:
         # - K : [int]
         # - score_method : 
         # - title_tf_idf_normalise_flag : 
 
-        performance_tf_idf = PerformanceTFIDF(self.wiki_database, experiment_nr, 
+        performance_tf_idf = PerformanceTFIDF(wiki_database, experiment_nr, 
             self.claim_data_set, K, score_method, title_tf_idf_normalise_flag)
 
         for id in tqdm(range(self.nr_claims), total = self.nr_claims, desc = 'process_claims_selected'):
             if id < self.nr_claims:
                 file = ClaimFile(id = id, path_dir_files = self.path_claims_dir)
                 claim_dict = performance_tf_idf.claim_database.get_claim_from_id(id)
-                file.process_claims_selected(claim_dict, self.wiki_database)
+                file.process_claims_selected(claim_dict, wiki_database)
 
-    def process_claim_tag_list(self):
+    def process_claim_tag_list(self, wiki_database):
         print('claim database: insert claim\'s text and claim\'s tag_list')
 
         n_gram = 1
@@ -332,9 +344,9 @@ class ClaimTensorDatabase():
                 claim_dict = self.claim_database.get_claim_from_id(id)
                 claim = Claim(claim_dict)
                 file.process_claim(claim)
-                file.process_claims_selected(claim_dict, self.wiki_database)
+                file.process_claims_selected(claim_dict, wiki_database)
 
-    def process_nr_words_per_tag(self, n_gram):
+    def process_nr_words_per_tag(self, n_gram, wiki_database):
         print('claim database: insert nr words per tag for claim')
         if n_gram == 1:
             experiment_nr = 37
@@ -346,19 +358,19 @@ class ClaimTensorDatabase():
             raise ValueError('only written for unigrams and bigrams', n_gram)
 
         with HiddenPrints():
-            tf_idf_db = get_tf_idf_from_exp(experiment_nr, self.wiki_database)
+            tf_idf_db = get_tf_idf_from_exp(experiment_nr, wiki_database)
             
         for id in tqdm(range(self.nr_claims), desc = 'nr words per pos'):
             file = ClaimFile(id = id, path_dir_files = self.path_claims_dir)
             file.process_nr_words_per_pos(tf_idf_db, self.tag_2_id_unigram_dict)
 
-    def process_selected_ids(self):
+    def process_selected_ids(self, wiki_database):
         print('claim database: insert selected ids')
 
         for experiment_nr in self.experiment_list:
             print('experiment:', experiment_nr)
             with HiddenPrints():
-                tf_idf_db = get_tf_idf_from_exp(experiment_nr, self.wiki_database)
+                tf_idf_db = get_tf_idf_from_exp(experiment_nr, wiki_database)
 
             mydict_ids = SqliteDict(tf_idf_db.path_ids_dict)
             mydict_tf_idf = SqliteDict(tf_idf_db.path_tf_idf_dict)
@@ -407,13 +419,18 @@ class ClaimTensorDatabase():
             label = file.claim_dict['claim']['label']
             dict_id = {}
             dict_id['id'] = id
+            if 'ids_generated' in file.claim_dict:
+                dict_id['ids_generated'] = file.claim_dict['ids_generated']
+            if 'ids_correct_docs' in file.claim_dict:
+                dict_id['ids_correct_docs'] = file.claim_dict['ids_correct_docs']
+            
             dict_id['selected_documents']={}
-            path_dict_variable_list = os.path.join(self.path_dict_variable_list_dir, str(id) + '.json')
+            path_dict_variable_list = os.path.join(self.path_dict_variable_list_dir, str(idx) + '.json')
 
             if label != 'NOT ENOUGH INFO':
                 label_nr = label_2_num(label)
 
-                for id_document in file.claim_dict['ids_selected']:
+                for id_document in file.claim_dict[self.selection_generation_or_selected]:
 
                     if label == 'SUPPORTS':
                         if id_document in file.claim_dict['ids_correct_docs']:
@@ -453,7 +470,7 @@ class ClaimTensorDatabase():
 
                     dict_id['selected_documents'][str(id_document)]={}
                     dict_id['selected_documents'][str(id_document)]['list_variables']=list_variables
-                    dict_id['selected_documents'][str(id_document)]['list_variables']=label_nr
+                    dict_id['selected_documents'][str(id_document)]['label_nr']=label_nr
 
                     tensor_variable = torch.FloatTensor(list_variables)  
                     tensor_label = torch.LongTensor([label_nr])
@@ -461,7 +478,7 @@ class ClaimTensorDatabase():
                     torch.save(tensor_variable, file_name_variables)
                     torch.save(tensor_label, file_name_label)
                     
-                    idx += 1
+                idx += 1
                 dict_save_json(dict_id, path_dict_variable_list)
 
         nr_variables = 0
@@ -477,7 +494,7 @@ class ClaimTensorDatabase():
         settings_dict['nr_refuted_true'] = nr_refuted_true
 
         settings_dict['nr_claims'] = self.claim_database.nr_claims
-
+        self.settings = settings_dict
         dict_save_json(settings_dict, self.path_settings_dict)
 
 if __name__ == '__main__':
@@ -485,9 +502,10 @@ if __name__ == '__main__':
     claim_data_set = 'dev'
     path_wiki_pages = os.path.join(config.ROOT, config.DATA_DIR, config.WIKI_PAGES_DIR, 'wiki-pages')
     path_wiki_database_dir = os.path.join(config.ROOT, config.DATA_DIR, config.DATABASE_DIR)
+    wiki_database = WikiDatabaseSqlite(path_wiki_database_dir, path_wiki_pages)
 
     setup = 1
 
-    ClaimTensorDatabase(path_wiki_pages, path_wiki_database_dir, setup)
+    ClaimTensorDatabase(setup, wiki_database, claim_data_set)
     
     

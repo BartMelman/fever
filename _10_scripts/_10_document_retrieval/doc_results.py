@@ -1,3 +1,11 @@
+from __future__ import print_function
+import argparse
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
+from torchvision import datasets, transforms
+
 import os
 import json
 from sqlitedict import SqliteDict
@@ -45,11 +53,10 @@ def get_selection(tf_idf_db, claim_database, title_tf_idf_flag_normalise):
 
         i = 0
         for doc in tqdm(tf_idf_db.vocab.wiki_database.nlp.pipe(iter_phrases(list_claims)), desc='pipeline', total = len(list_claims)):
-            claim_doc_tokenizer = ClaimDocTokenizer(doc, tf_idf_db.vocab.delimiter_words)
-            n_grams, nr_words = claim_doc_tokenizer.get_n_grams(method_tokenization, tf_idf_db.vocab.n_gram)
+            claim_doc_tokenizer = ClaimDocTokenizer(doc, tf_idf_db.vocab.delimiter_words, tf_idf_db.delimiter_tag_word, tf_idf_db.list_pos_tokenization)
+            n_grams, nr_words = claim_doc_tokenizer.get_n_grams(method_tokenization, tf_idf_db.vocab.n_gram, tf_idf_db.tags_in_db_flag)
 
             dictionary = {}
-
             for word in n_grams:
                 try:
                     word_id_list = mydict_ids[word].split(delimiter)[1:]
@@ -337,9 +344,9 @@ if __name__ == '__main__':
     path_wiki_database_dir = os.path.join(config.ROOT, config.DATA_DIR, config.DATABASE_DIR)
     
     # === variables === #
-    claim_data_set = 'dev' # 
-    experiment_nr_list = [31, 32, 33, 34, 35, 36, 37, 38, 39] # [31, 37] # [31,32,33,34,35,36,37,38,39]
-    list_K = [5, 10, 20, 40, 100]
+    claim_data_set = 'train_adj' # 
+    experiment_nr_list = [31, 37] # [31,32,33,34,35,36,37,38,39]
+    list_K = [5, 100]
     score_list = ['e_score', 'f_score', 'e_score_labelled', 'f_score_labelled']
     title_tf_idf_flag_normalise_list = [True, False]
 

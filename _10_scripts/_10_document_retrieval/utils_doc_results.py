@@ -38,17 +38,29 @@ class Claim:
             self.docs_selected = claim_dictionary['docs_selected']
 
 class ClaimDocTokenizer:
-    def __init__(self, doc, delimiter_words):
+    def __init__(self, doc, delimiter_words, delimiter_tags, list_pos_tokenization):
         self.doc = doc
         self.delimiter_words = delimiter_words
+        self.delimiter_tags = delimiter_tags
+        self.list_pos_tokenization = list_pos_tokenization
+
     def get_tokenized_claim(self, method_tokenization):
         # claim_without_dot = self.claim[:-1]  # remove . at the end
         # doc = self.nlp(claim_without_dot)
         text = Text(self.doc)
         tokenized_claim = text.process(method_tokenization)
         return tokenized_claim
-    def get_n_grams(self, method_tokenization, n_gram):
-        return count_n_grams(self.get_tokenized_claim(method_tokenization), n_gram, 'str', self.delimiter_words)
+
+    def get_n_grams(self, method_tokenization, n_gram, tags_in_db_flag):
+        tokenized_claim = self.get_tokenized_claim(method_tokenization)
+        # print(tags_in_db_flag, method_tokenization, self.list_pos_tokenization)
+        if tags_in_db_flag == 0 and method_tokenization[0] in self.list_pos_tokenization:
+            tmp = []
+            for tokenized_word in tokenized_claim :
+                tag, word = get_tag_word_from_wordtag(tokenized_word, self.delimiter_tags)
+                tmp.append(word)
+            tokenized_claim = tmp
+        return count_n_grams(tokenized_claim, n_gram, 'str', self.delimiter_words)
 
 def get_tag_word_from_wordtag(key, delimiter):
     splitted_key = key.split(delimiter)
@@ -63,7 +75,7 @@ class ClaimDatabase:
         self.claim_data_set = claim_data_set
         self.K = K
         
-        self.path_dir_database_claims = os.path.join(self.path_dir_database, 'claims') #'claims_' + str(self.claim_data_set) + '_' + str(K))
+        self.path_dir_database_claims = os.path.join(self.path_dir_database, 'claims_' + str(self.claim_data_set)) #'claims_' + str(self.claim_data_set) + '_' + str(K))
         self.path_raw_claims = os.path.join(path_raw_data, str(self.claim_data_set) + '.jsonl')
         self.path_settings = os.path.join(self.path_dir_database_claims, 'settings.json')
         
