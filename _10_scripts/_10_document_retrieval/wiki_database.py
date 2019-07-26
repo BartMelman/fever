@@ -36,7 +36,7 @@ class WikiDatabaseSqlite:
         # === process === #
         print('wiki_database')
         self.nlp = spacy.load('en', disable=["parser", "ner"])
-
+        print(self.path_dir_database)
         mkdir_if_not_exist(self.path_dir_database)
         if not (os.path.isfile(self.path_id_2_title) and os.path.isfile(self.path_title_2_id) and os.path.isfile(self.path_id_2_text) and os.path.isfile(self.path_title_2_text)):
             self.create_databases()
@@ -90,7 +90,6 @@ class WikiDatabaseSqlite:
             settings = dict_load_json(self.path_settings)
         else:
             settings = {}
-
         nr_wikipedia_files = num_files_in_directory(self.path_wiki_pages)
         id_cnt = 0
 
@@ -139,7 +138,7 @@ class WikiDatabaseSqlite:
         dict_save_json(settings, self.path_settings)
 
     def get_lines_list_from_title(self, title):
-        dict_wiki_page = self.title_2_lines_db(title)
+        dict_wiki_page = self.title_2_lines_db[title]
         nr_lines = dict_wiki_page['nr_lines']
         lines_list = []
         for line_nr in range(nr_lines):
@@ -150,10 +149,10 @@ class WikiDatabaseSqlite:
                 lines_list.append('')
         return lines_list
 
-    def get_line_from_title(self, title):
-        dict_wiki_page = self.title_2_lines_db(title)
-        return dict_wiki_page[title]
-
+    def get_line_from_title(self, title, line_nr):
+        dict_wiki_page = self.title_2_lines_db[title]
+        # print(dict_wiki_page)
+        return dict_wiki_page[str(line_nr)]
 
     def get_title_from_id(self, id_nr):
         if self.id_title_dict_flag == True:
@@ -241,16 +240,16 @@ class Text:
     def tokenize_tag(self):
         return [word.pos_ for word in self.text]
 
-def get_dict_lines(self, input_wiki_page_dict):
+def get_dict_lines(input_wiki_page_dict):
     output_wiki_page_dict = {}
-        line_nr = 0
-        for lines_list in input_wiki_page_dict['lines'].split('\n'):
-            splitted_lines_list = lines_list.split('\t')
-            if len(splitted_lines_list) > 1:
-                line_nr = splitted_lines_list[0]
-                line_text = splitted_lines_list[1]
-                output_wiki_page_dict[str(line_nr)] = normalise_text(line_text)
-        output_wiki_page_dict['nr_lines'] = int(line_nr)
+    line_nr = 0
+    for lines_list in input_wiki_page_dict['lines'].split('\n'):
+        splitted_lines_list = lines_list.split('\t')
+        if len(splitted_lines_list) > 1:
+            line_nr = splitted_lines_list[0]
+            line_text = splitted_lines_list[1]
+            output_wiki_page_dict[str(line_nr)] = normalise_text(line_text)
+    output_wiki_page_dict['nr_lines'] = int(line_nr)
     return output_wiki_page_dict
 
 class WikipagesLines:
