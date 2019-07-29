@@ -1,3 +1,4 @@
+import os
 import spacy
 import random
 from random import shuffle
@@ -6,10 +7,11 @@ import sqlite3
 from tqdm import tqdm
 import pickle 
 
-from utils_db import dict_load_json, dict_save_json, mkdir_if_not_exist
+from utils_db import dict_load_json, dict_save_json, mkdir_if_not_exist, load_jsonl
+from utils_doc_results_db import get_tag_2_id_dict_unigrams
 
 class ClaimDatabaseStage_2_3:
-    def __init__(self, path_database_dir, path_raw_data, fraction_validation, method_combination):
+    def __init__(self, path_database_dir, path_raw_data, fraction_validation, method_combination, wiki_database):
         # description: create a database in which the 
         
         # folder layout:n
@@ -112,16 +114,18 @@ class ClaimDatabaseStage_2_3:
         
         for stage in stage_list:
             for dataset_type in ['train', 'validation']:
-                self.create_database(dataset_type = dataset_type, 
-                                             claim_dict_list = claim_dict_list, 
-                                             partition = self.settings['partition'][dataset_type], 
-                                             stage = stage)
+                self.create_database(wiki_database = wiki_database,
+                                     dataset_type = dataset_type, 
+                                     claim_dict_list = claim_dict_list, 
+                                     partition = self.settings['partition'][dataset_type], 
+                                     stage = stage)
         
         # --- create database dev set --- #
         claim_dict_list = self.get_raw_data(data_set_type = 'dev')
         
         for stage in stage_list:
-            self.create_database(dataset_type = 'dev', 
+            self.create_database(wiki_database = wiki_database,
+                                 dataset_type = 'dev', 
                                  claim_dict_list = claim_dict_list, 
                                  partition = self.settings['partition']['dev'], 
                                  stage = stage)
@@ -196,13 +200,16 @@ class ClaimDatabaseStage_2_3:
                         premises_part_of_speech.append(claim_dict["premises_tags"])
                         ids_hypothesis, ids_evidence = hypothesis_evidence_2_index(hypothesis = claim_dict['hypotheses'], 
                                                                                  premise = claim_dict['premises'], 
-                                                                                 max_length = 70, 
+                                                                                 max_length = 75, 
                                                                                  randomise_flag = True)
                         premises_out_of_vocabulary.append(ids_evidence)
                         hypotheses.append(claim_dict['hypotheses'])
                         hypotheses_part_of_speech.append(claim_dict["hypotheses_tags"])
                         hypotheses_out_of_vocabulary.append(ids_hypothesis)
-                        labels.append(claim_dict['labels'])
+                        if method == 'nei':
+                            labels.append('NOT ENOUGH INFO')
+                        else:
+                            labels.append(claim_dict['labels'])
 
             elif method_combination == 'one_from_every_claim':
                 path_stage_2_correct_db = self.path_db[stage]['correct'][dataset_type]
@@ -232,7 +239,15 @@ class ClaimDatabaseStage_2_3:
                     claim_dict = stage_2_refuted_db[key_refuted][0]
                     ids.append(claim_dict['ids'])
                     premises.append(claim_dict['premises'])
+                    premises_part_of_speech.append(claim_dict["premises_tags"])
+                    ids_hypothesis, ids_evidence = hypothesis_evidence_2_index(hypothesis = claim_dict['hypotheses'], 
+                                                                             premise = claim_dict['premises'], 
+                                                                             max_length = 75, 
+                                                                             randomise_flag = True)
+                    premises_out_of_vocabulary.append(ids_evidence)
                     hypotheses.append(claim_dict['hypotheses'])
+                    hypotheses_part_of_speech.append(claim_dict["hypotheses_tags"])
+                    hypotheses_out_of_vocabulary.append(ids_hypothesis)
                     labels.append(claim_dict['labels'])
                 for idx in tqdm(range(self.settings[stage][dataset_type]['nr_nei']), desc='save pickle_nei_'+dataset_type):
                     # update not enough info
@@ -243,7 +258,7 @@ class ClaimDatabaseStage_2_3:
                     premises_part_of_speech.append(claim_dict["premises_tags"])
                     ids_hypothesis, ids_evidence = hypothesis_evidence_2_index(hypothesis = claim_dict['hypotheses'], 
                                                                              premise = claim_dict['premises'], 
-                                                                             max_length = 70, 
+                                                                             max_length = 75, 
                                                                              randomise_flag = True)
                     premises_out_of_vocabulary.append(ids_evidence)
                     hypotheses.append(claim_dict['hypotheses'])
@@ -259,7 +274,7 @@ class ClaimDatabaseStage_2_3:
                     premises_part_of_speech.append(claim_dict["premises_tags"])
                     ids_hypothesis, ids_evidence = hypothesis_evidence_2_index(hypothesis = claim_dict['hypotheses'], 
                                                                              premise = claim_dict['premises'], 
-                                                                             max_length = 70, 
+                                                                             max_length = 75, 
                                                                              randomise_flag = True)
                     premises_out_of_vocabulary.append(ids_evidence)
                     hypotheses.append(claim_dict['hypotheses'])
@@ -267,10 +282,10 @@ class ClaimDatabaseStage_2_3:
                     hypotheses_out_of_vocabulary.append(ids_hypothesis)
                     labels.append(claim_dict['labels'])
 
-            c = list(zip(ids, premises, hypotheses, labels))
+            c = list(zip(ids, premises, hypotheses, premises_part_of_speech, premises_out_of_vocabulary, hypotheses_part_of_speech, hypotheses_out_of_vocabulary, labels))
             random.shuffle(c)
 
-            ids, premises, hypotheses, labels = zip(*c)
+            ids, premises, hypotheses, premises_part_of_speech, premises_out_of_vocabulary, hypotheses_part_of_speech, hypotheses_out_of_vocabulary, labels = zip(*c)
 
             target_dict = {"ids": ids,
                 "premises": premises,
@@ -280,13 +295,14 @@ class ClaimDatabaseStage_2_3:
                 "hypotheses_part_of_speech": hypotheses_part_of_speech,
                 "hypotheses_out_of_vocabulary": hypotheses_out_of_vocabulary,           
                 "labels": labels}
+
             with open(os.path.join(self.pickle_files_dir, path_save), "wb") as pkl_file:
                 pickle.dump(target_dict, pkl_file)
             
     def save_settings(self):
         dict_save_json(self.settings, self.path_settings)
         
-    def create_database(self, dataset_type, claim_dict_list, partition, stage):
+    def create_database(self, wiki_database, dataset_type, claim_dict_list, partition, stage):
         print(stage, dataset_type)
         path_stage_2_correct_db = self.path_db[stage]['correct'][dataset_type]
         path_stage_2_refuted_db = self.path_db[stage]['refuted'][dataset_type]
@@ -313,7 +329,6 @@ class ClaimDatabaseStage_2_3:
                 with SqliteDict(path_stage_2_refuted_db) as stage_2_refuted_db:
                     with SqliteDict(path_stage_2_nei_db) as stage_2_nei_db:
                         for claim_nr in tqdm(partition, total = len(partition), desc='create database '+dataset_type):
-                            if claim_nr < 1000:
                                 claim_dict = claim_dict_list[claim_nr]
                                 if stage == 'stage_2':
                                     correct_evidence_list, incorrect_evidence_list = get_claim_dict_stage_2(
@@ -367,6 +382,7 @@ class ClaimDatabaseStage_2_3:
 def get_claim_dict_stage_3(claim_dict, wiki_database, claim_nr, nlp):
     method_tokenization = 'tokenize_text_pos'
     
+    tag_2_id_dict = get_tag_2_id_dict_unigrams()
     sentence_dict_list = []
     sentence_dict_total = {}
     list_old_proofs = []
@@ -397,7 +413,8 @@ def get_claim_dict_stage_3(claim_dict, wiki_database, claim_nr, nlp):
            
     text_claim = normalise_text(claim_dict['claim'])
     tag_list_claim, word_list_claim = get_word_tag_list_from_text(text_str = text_claim, nlp = nlp, method_tokenization_str = method_tokenization)
-    
+    tag_list_claim = [tag_2_id_dict[pos] for pos in tag_list_claim]
+
     list_correct_observations = []
     list_nei_observations = []
     
@@ -418,6 +435,7 @@ def get_claim_dict_stage_3(claim_dict, wiki_database, claim_nr, nlp):
                 dict_tmp = {}
                 text_hypothesis = wiki_database.get_line_from_title(title, line_nr)
                 tag_list_hypotheses, word_list_hypotheses = get_word_tag_list_from_text(text_str = text_hypothesis, nlp = nlp, method_tokenization_str = method_tokenization)
+                tag_list_hypotheses = [tag_2_id_dict[pos] for pos in tag_list_hypotheses]
                 dict_tmp['hypotheses'] = word_list_hypotheses
                 dict_tmp['hypotheses_tags'] = tag_list_hypotheses
                 correct_dict_list.append(dict_tmp)
@@ -438,6 +456,7 @@ def get_claim_dict_stage_3(claim_dict, wiki_database, claim_nr, nlp):
                 dict_tmp = {}
                 text_hypothesis_incorrect = lines_file[index]
                 tag_list_hypotheses, word_list_hypotheses = get_word_tag_list_from_text(text_str = text_hypothesis_incorrect, nlp = nlp, method_tokenization_str = method_tokenization)
+                tag_list_hypotheses = [tag_2_id_dict[pos] for pos in tag_list_hypotheses]
                 dict_tmp['hypotheses'] = word_list_hypotheses
                 dict_tmp['hypotheses_tags'] = tag_list_hypotheses
                 potential_dict_list.append(dict_tmp)
@@ -491,7 +510,7 @@ def get_claim_dict_stage_3(claim_dict, wiki_database, claim_nr, nlp):
             dict_out = {}
             dict_out['premises'] = word_list_claim
             dict_out['ids'] = str(claim_dict['id']) + '_' + str(claim_nr) + '_' + str(interpreters_nr) + '_random'
-            dict_out['labels'] = claim_dict['label']
+            dict_out['labels'] = 'NOT ENOUGH INFO'#claim_dict['label']
             dict_out['premises_tags'] = tag_list_claim
             dict_out['hypotheses'] = []
             dict_out['hypotheses_tags'] = []
@@ -517,6 +536,8 @@ from utils_wiki_database import normalise_text
 def get_claim_dict_stage_2(claim_dict, wiki_database, claim_nr, nlp):
     method_tokenization = 'tokenize_text_pos'
     
+    tag_2_id_dict = get_tag_2_id_dict_unigrams()
+
     sentence_dict = {}
     for interpreter in claim_dict['evidence']:
         for proof in interpreter:
@@ -529,7 +550,7 @@ def get_claim_dict_stage_2(claim_dict, wiki_database, claim_nr, nlp):
                     sentence_dict[normalised_title].append(line_nr)
                 else:
                     sentence_dict[normalised_title] = [line_nr]
-                    
+    
     correct_evidence_list = []
     incorrect_evidence_list = []
     interpreters_nr = 0
@@ -540,17 +561,23 @@ def get_claim_dict_stage_2(claim_dict, wiki_database, claim_nr, nlp):
             dict_out = {}
             text_claim = normalise_text(claim_dict['claim'])
             tag_list_claim, word_list_claim = get_word_tag_list_from_text(text_str = text_claim, nlp = nlp, method_tokenization_str = method_tokenization)
+            tag_list_claim = [tag_2_id_dict[pos] for pos in tag_list_claim]
             dict_out['premises'] = word_list_claim
             dict_out['ids'] = str(claim_dict['id']) + '_' + str(claim_nr) + '_' + str(interpreters_nr) + '_correct'
             dict_out['labels'] = claim_dict['label']
             dict_out['premises_tags'] = tag_list_claim
+
+
             text_hypothesis = wiki_database.get_line_from_title(title, line_nr)
             tag_list_hypotheses, word_list_hypotheses = get_word_tag_list_from_text(text_str = text_hypothesis, nlp = nlp, method_tokenization_str = method_tokenization)
             dict_out['hypotheses'] = word_list_hypotheses
+            tag_list_hypotheses = [tag_2_id_dict[pos] for pos in tag_list_hypotheses]
             dict_out['hypotheses_tags'] = tag_list_hypotheses
             
             correct_evidence_list.append(dict_out)
+
             # incorrect
+            dict_out = {}
             lines_file = wiki_database.get_lines_list_from_title(title)
             cosine_distance_list = []
             for i in range(len(lines_file)):
@@ -565,10 +592,11 @@ def get_claim_dict_stage_2(claim_dict, wiki_database, claim_nr, nlp):
             
             dict_out['premises'] = word_list_claim
             dict_out['ids'] = str(claim_dict['id']) + '_' + str(claim_nr) + '_' + str(interpreters_nr) + '_random'
-            dict_out['labels'] = claim_dict['label']
+            dict_out['labels'] = 'NOT ENOUGH INFO'
             dict_out['premises_tags'] = tag_list_claim
             tag_list_hypotheses, word_list_hypotheses = get_word_tag_list_from_text(text_str = text_hypothesis_incorrect, nlp = nlp, method_tokenization_str = method_tokenization)
             dict_out['hypotheses'] = word_list_hypotheses
+            tag_list_hypotheses = [tag_2_id_dict[pos] for pos in tag_list_hypotheses]
             dict_out['hypotheses_tags'] = tag_list_hypotheses
             incorrect_evidence_list.append(dict_out)
         interpreters_nr += 1
@@ -643,12 +671,15 @@ def get_word_tag_list_from_text(text_str, nlp, method_tokenization_str):
 
 from random import shuffle
 
-def hypothesis_evidence_2_index(hypothesis, premise, max_length = 70, randomise_flag = False):
+def hypothesis_evidence_2_index(hypothesis, premise, max_length = 75, randomise_flag = False):
     # input
     # - hypothesis: list of words
     # - evidence : list of words
+    # first two indices are not used (for beginning of sentence and end of sentence tags)
+    # last element is always the same (shuffled or not), same for first two
+
     vocab = list(set(premise))
-    
+    nr_empty_start = 2
     loc_hypothesis = []
     loc_premise = []
     
@@ -659,13 +690,57 @@ def hypothesis_evidence_2_index(hypothesis, premise, max_length = 70, randomise_
             loc_hypothesis.append(max_length-1)
             
     loc_premise = [vocab.index(word) for word in premise]
+
+    shuffle_list = list(range(2, max_length-1))
     
     if randomise_flag:
-        shuffle_list = list(range(max_length-1))
         shuffle(shuffle_list)
-        shuffle_list.append(max_length-1)
-        
-        loc_hypothesis = [shuffle_list[loc] for loc in loc_hypothesis]
-        loc_premise = [shuffle_list[loc] for loc in loc_premise]
+
+    # shuffle_list.append(max_length-1)
     
-    return loc_hypothesis, loc_premise
+    # print(max(loc_hopothesis), len(shuffle_list))
+    loc_hypothesis_new = []
+    for loc in loc_hypothesis:
+        if loc == max_length-1:
+            loc_hypothesis_new.append(loc)
+        else:
+            loc_hypothesis_new.append(shuffle_list[loc])
+
+    # loc_premise_new = []
+    # for loc in loc_premise:
+    #     if loc == max_length-1:
+    #         loc_premise_new.append(loc)
+    #     else:
+    #         loc_premise_new.append(shuffle_list[loc])
+
+    # print(loc_hypothesis, len(shuffle_list))
+    # loc_hypothesis = [shuffle_list[loc] for loc in loc_hypothesis]
+    loc_premise_new = [shuffle_list[loc] for loc in loc_premise]
+    
+    return loc_hypothesis_new, loc_premise_new
+
+import os
+from wiki_database import WikiDatabaseSqlite
+from utils_db import mkdir_if_not_exist
+import config
+import os
+from utils_db import load_jsonl
+from claim_database_stage_2_3 import ClaimDatabaseStage_2_3
+
+import config
+if __name__ == '__main__':
+    path_wiki_pages = os.path.join(config.ROOT, config.DATA_DIR, config.WIKI_PAGES_DIR, 'wiki-pages')
+    path_wiki_database_dir = os.path.join(config.ROOT, config.DATA_DIR, config.DATABASE_DIR)
+    # mkdir_if_not_exist(path_wiki_database_dir)
+    wiki_database = WikiDatabaseSqlite(path_wiki_database_dir, path_wiki_pages)
+
+
+    path_dir_database = os.path.join(config.ROOT,'claim_db')
+    path_raw_data = os.path.join(config.ROOT, config.DATA_DIR, config.RAW_DATA_DIR)
+    fraction_validation = 0.1
+    method_combination = 'one_from_every_claim' # 'equal', one_from_every_claim
+    claim_database = ClaimDatabaseStage_2_3(path_database_dir = path_dir_database, 
+                                         path_raw_data = path_raw_data, 
+                                         fraction_validation = fraction_validation,
+                                         method_combination = method_combination,
+                                         wiki_database = wiki_database)

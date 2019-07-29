@@ -3,3 +3,4 @@ _90_dependencies*
 _99_tmp*
 _98_jupyter_notebook*
 _01_data*
+*.ipynb
