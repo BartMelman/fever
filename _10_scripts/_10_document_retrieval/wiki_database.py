@@ -199,7 +199,7 @@ class Text:
 
     def process(self, method_list):
         """Dispatch method"""
-        method_options = ['tokenize', 'tokenize_lemma', 'tokenize_lemma_list_accepted', 
+        method_options = ['tokenize', 'tokenize_lemma', 'tokenize_lower', 'tokenize_lemma_list_accepted', 
         'tokenize_lemma_nouns', 'tokenize_lemma_prop_nouns', 'tokenize_lemma_number', 'tokenize_lemma_pos', 'tokenize_text_pos'] 
 
         for method in method_list:
