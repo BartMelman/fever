@@ -64,7 +64,7 @@ class VocabularySqlite:
         
         
     def get_base_dir(self):
-        method_options = ['tokenize', 'tokenize_lemma', 'tokenize_lemma_list_accepted', 'tokenize_lemma_nouns', 
+        method_options = ['tokenize', 'tokenize_lower', 'tokenize_lemma', 'tokenize_lemma_list_accepted', 'tokenize_lemma_nouns', 
         'tokenize_lemma_prop_nouns', 'tokenize_lemma_number', 'tokenize_lemma_pos']
         folder_name = 'vocab'
         folder_name = folder_name + '_' + self.source + '_' + str(self.n_gram)
@@ -72,6 +72,8 @@ class VocabularySqlite:
         for method in self.method_tokenization:
             if method == 'tokenize':
                 folder_name = folder_name + '_t'
+            elif method == 'tokenize_lower':
+                folder_name = folder_name + '_lc'
             elif method == 'tokenize_text_pos':
                 folder_name = folder_name + '_tp'
             elif method == 'tokenize_lemma':

@@ -106,10 +106,10 @@ class PredictLabels():
 
 if __name__ == '__main__':
     # === variables === #
-    claim_data_set_nn = 'train_adj'
-    claim_data_set_results = 'train_adj'
+    claim_data_set_nn = 'dev'
+    claim_data_set_results = 'dev'
     method_database = 'equal_class' # include_all, equal_class
-    setup = 1
+    setup = 2
     nn_model_name = 'NetHighWayConnections' # 'NetHighWayConnections', 'LogisticRegression', 'NetFullyConnectedAutomated'   
     settings_model = {}
     settings_model['fraction_training'] = 0.9
@@ -128,10 +128,17 @@ if __name__ == '__main__':
     else:
         raise ValueError('method_database not in list', method_database)
 
-    settings_model['nr_epochs'] = 20
+    settings_model['nr_epochs'] = 5
     settings_model['log_interval'] = 10
-    settings_model['width'] = 2000
+    settings_model['width'] = 200
     settings_model['depth'] = 2
+    settings_model['flag_weighted_criterion'] = False
+
+    selection_experiment_dict = {}
+    selection_experiment_dict['experiment_nr'] = 31
+    selection_experiment_dict['K'] = 100
+    selection_experiment_dict['title_tf_idf_normalise_flag'] = True
+    selection_experiment_dict['selection_generation_or_selected'] = 'ids_generated' # 
 
     method_list = ['generated', 'correct', 'selected']
     method = 'generated'
@@ -144,22 +151,29 @@ if __name__ == '__main__':
     wiki_database = WikiDatabaseSqlite(path_wiki_database_dir, path_wiki_pages)
 
     claim_tensor_db = ClaimTensorDatabase(setup = setup, 
-        wiki_database = wiki_database, claim_data_set = claim_data_set_results, selection_generation_or_selected = selection_generation_or_selected)
+        wiki_database = wiki_database, 
+        claim_data_set = claim_data_set_results, 
+        selection_experiment_dict = selection_experiment_dict)
 
     claim_database = ClaimDatabase(path_dir_database = claim_tensor_db.path_dir_claim_database, 
                                    path_raw_data = claim_tensor_db.path_raw_claim_data, 
                                    claim_data_set = claim_tensor_db.claim_data_set)
 
-    neural_network = NeuralNetwork(claim_data_set_nn, method_database, 
-        setup, settings_model, wiki_database, nn_model_name, selection_generation_or_selected)
+    # neural_network = NeuralNetwork(claim_data_set = claim_data_set_nn,
+    #     method_database = method_database, 
+    #     setup = setup, 
+    #     settings_model = settings_model, 
+    #     nn_model_name = nn_model_name,
+    #     wiki_database = wiki_database, 
+    #     selection_experiment_dict  = selection_experiment_dict)
         
-    model_nn = neural_network.model
+    # model_nn = neural_network.model
 
-    for threshold in threshold_list:
-        predict_labels_db = PredictLabels(K, threshold, method, claim_tensor_db, 
-            wiki_database, neural_network, claim_database)
-        # predict_labels_db = PredictLabels(K, threshold, method, claim_tensor_db, 
-        #     wiki_database, neural_network, claim_database)
+    # for threshold in threshold_list:
+    #     predict_labels_db = PredictLabels(K, threshold, mePthod, claim_tensor_db, 
+    #         wiki_database, neural_network, claim_database)
+    #     # predict_labels_db = PredictLabels(K, threshold, method, claim_tensor_db, 
+    #     #     wiki_database, neural_network, claim_database)
 
 
     

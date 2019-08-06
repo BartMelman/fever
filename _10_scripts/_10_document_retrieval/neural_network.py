@@ -12,7 +12,7 @@ from random import shuffle
 from tqdm import tqdm
 
 from doc_results_db import ClaimTensorDatabase
-from utils_db import mkdir_if_not_exist, dict_save_json, dict_load_json
+from utils_db import mkdir_if_not_exist, dict_save_json, dict_load_json, get_file_name_from_variable_list
 
 import config
 
@@ -22,11 +22,16 @@ matplotlib.rcParams['mathtext.fontset'] = 'stix'
 matplotlib.rcParams['font.family'] = 'STIXGeneral'
 
 class DataNeuralNetwork():
-    def __init__(self, method_database, setup, claim_data_set, wiki_database, selection_generation_or_selected):
+    def __init__(self, method_database, setup, claim_data_set, wiki_database, selection_experiment_dict):
         self.setup = setup
         self.method_database = method_database
         self.claim_data_set = claim_data_set
-        self.tensor_db = ClaimTensorDatabase(self.setup, wiki_database, claim_data_set, selection_generation_or_selected)
+        self.selection_experiment_dict = selection_experiment_dict
+        self.tensor_db = ClaimTensorDatabase(setup = self.setup, 
+            wiki_database = wiki_database, 
+            claim_data_set = self.claim_data_set, 
+            selection_experiment_dict = self.selection_experiment_dict)
+
         self.path_combined_data_dir = os.path.join(self.tensor_db.path_results_dir, 'neural_network', 'data_setup_' + str(claim_data_set) + '_' + str(self.setup) + '_' + self.method_database)
         self.path_settings = os.path.join(self.path_combined_data_dir, 'settings.json')
         
@@ -75,6 +80,10 @@ class DataNeuralNetwork():
                     torch.save(Y, file_name_label_write)
 
             self.settings['nr_observations'] = len(random_id_list)
+            self.settings['nr_correct_true'] = self.tensor_db.settings['nr_correct_true']
+            self.settings['nr_correct_false'] = self.tensor_db.settings['nr_correct_false']
+            self.settings['nr_refuted_true'] = self.tensor_db.settings['nr_refuted_true']
+            self.settings['nr_refuted_false'] = self.tensor_db.settings['nr_refuted_false']
 
         elif self.method_database == 'equal_class':
             min_nr_observations = min(nr_observations_list)
@@ -103,6 +112,10 @@ class DataNeuralNetwork():
                     j += 1
 
             self.settings['nr_observations'] = len(random_id_list)
+            self.settings['nr_correct_true'] = min_nr_observations
+            self.settings['nr_correct_false'] = min_nr_observations
+            self.settings['nr_refuted_true'] = min_nr_observations
+            self.settings['nr_refuted_false'] = min_nr_observations
 
         else:
             raise ValueError('method not in method options', method_database)
@@ -200,13 +213,14 @@ class LogisticRegression(nn.Module):
     def forward(self, x):
         return self.sigmoid(self.fc_input(x))
 
-def train(log_interval, model, device, train_loader, optimizer, epoch, criterion):
+def train(log_interval, model, device, train_loader, optimizer, epoch, criterion, flag_weighted_criterion = False, criterion_dict = None):
     model.train()
     for batch_idx, (data, target) in enumerate(train_loader):
         data, target = data.to(device), target.to(device)
         target = target.view(-1, 1)
         optimizer.zero_grad()
         output = model(data)
+                                
         loss = criterion(output, target)
         loss.backward()
         optimizer.step()
@@ -215,7 +229,7 @@ def train(log_interval, model, device, train_loader, optimizer, epoch, criterion
                 epoch, batch_idx * len(data), len(train_loader.dataset),
                 100. * batch_idx / len(train_loader), loss.item()))
 
-def train_performance(model, device, test_loader, criterion, threshold):
+def train_performance(model, device, test_loader, criterion, threshold, flag_weighted_criterion = False, criterion_dict = None):
     model.eval()
     test_loss = 0
     correct = 0
@@ -240,7 +254,7 @@ def train_performance(model, device, test_loader, criterion, threshold):
 
     return test_loss, 100. * correct / len(test_loader.dataset)
     
-def test_performance(model, device, test_loader, criterion, threshold):
+def test_performance(model, device, test_loader, criterion, threshold, flag_weighted_criterion = False, criterion_dict = None):
     model.eval()
     test_loss = 0
     correct = 0
@@ -250,7 +264,13 @@ def test_performance(model, device, test_loader, criterion, threshold):
             data, target = data.to(device), target.to(device)
             target = target.view(-1, 1)
             output = model(data)
-            test_loss += criterion(output, target).item() # sum up batch loss
+            if flag_weighted_criterion == True:
+                nr_correct = criterion_dict['nr_correct_true'] + criterion_dict['nr_refuted_true']
+                nr_incorrect =criterion_dict['nr_correct_false'] + criterion_dict['nr_refuted_false']
+                weight = nr_incorrect / float(nr_correct)
+            else:
+                weight = 1.0
+            test_loss += criterion(output, target, target*weight).item() # sum up batch loss
             # pred = output.argmax(dim=1, keepdim=True) # get the index of the max log-probability
             threshold = 0.5
             target_unit8 = target>0.5
@@ -292,12 +312,13 @@ class Dataset(data.Dataset):
         return X, y
 
 class NeuralNetwork():
-    def __init__(self, claim_data_set, method_database, setup, settings_model, wiki_database, nn_model_name, selection_generation_or_selected):
+    def __init__(self, claim_data_set, method_database, setup, settings_model, wiki_database, nn_model_name, selection_experiment_dict):
         self.claim_data_set = claim_data_set
-        self.selection_generation_or_selected = selection_generation_or_selected
+        self.selection_experiment_dict = selection_experiment_dict
         self.method_database = method_database
         self.setup = setup
         self.nn_model_name = nn_model_name
+        self.flag_weighted_criterion = settings_model['flag_weighted_criterion']
         self.width = settings_model['width']
         self.depth = settings_model['depth']
         self.fraction_training = settings_model['fraction_training']
@@ -311,18 +332,20 @@ class NeuralNetwork():
         self.batch_size = settings_model['batch_size']
         self.optimizer = settings_model['optimizer']
         self.data_nn = self.get_data(wiki_database)
+        self.settings_data = self.data_nn.settings
         self.nr_observations = self.data_nn.settings['nr_observations']
+        print('nr observations', self.nr_observations)
         self.nr_variables = self.data_nn.tensor_db.settings['nr_variables']
-        self.file_name = 'model_' + self.method_database + '_' + str(
-        	self.setup) + '_' + self.claim_data_set + '_' + self.nn_model_name + '_' + str(
-        	self.width) + '_' + str(self.depth) + '_' + str(
-			self.nr_epochs) + '_' + str(self.fraction_training) + '_' + str(self.batch_size) + '_' + str(self.optimizer)
+        self.file_name = 'model_' + self.method_database + '_' + get_file_name_from_variable_list([self.setup,
+                self.claim_data_set, self.nn_model_name, self.width, self.depth, self.nr_epochs,
+                self.fraction_training, self.batch_size, self.optimizer, self.flag_weighted_criterion])
+
         self.path_model_dir = os.path.join(self.data_nn.tensor_db.path_results_dir, 
         	'neural_network', self.file_name)
         self.path_settings = os.path.join(self.path_model_dir, 'settings.json')
         self.path_plots_dir = os.path.join(self.path_model_dir, 'plots')
         mkdir_if_not_exist(self.path_plots_dir)
-        self.criterion = nn.BCELoss() # F.nll_loss(
+        self.criterion = nn.BCEWithLogitsLoss() # F.nll_loss(
         self.threshold = 0.5
 
         mkdir_if_not_exist(self.path_model_dir)
@@ -396,10 +419,12 @@ class NeuralNetwork():
         save_plot(x_list = x, y_list = y, x_label_str = 'epoch', y_label_str ='acc', label_list = label_list,
 		          x_min = x_min, x_max = x_max, y_min = y_min, y_max = y_max, fontsize = fontsize, path_save = path_save)
 
-
-
     def get_data(self, wiki_database):
-        return DataNeuralNetwork(self.method_database, self.setup, self.claim_data_set, wiki_database, self.selection_generation_or_selected)
+        return DataNeuralNetwork(self.method_database, 
+            self.setup, 
+            self.claim_data_set, 
+            wiki_database, 
+            self.selection_experiment_dict)
     
     def get_partition(self):
         partition = {}
@@ -448,9 +473,18 @@ class NeuralNetwork():
         epoch_lowest_loss = 0	
         lowest_test_loss = None
         for epoch in range(1, self.nr_epochs + 1):
-            train(self.log_interval, self.model, self.device, self.training_data_loader, optimizer, epoch, self.criterion)
-            loss_train, acc_train = train_performance(self.model, self.device, self.training_data_loader, self.criterion, self.threshold)
-            loss_test, acc_test = test_performance(self.model, self.device, self.validation_data_loader, self.criterion, self.threshold)
+            train(self.log_interval, self.model, self.device, self.training_data_loader, 
+                optimizer, epoch, self.criterion,
+                flag_weighted_criterion = self.flag_weighted_criterion, 
+                criterion_dict = self.settings_data)
+            loss_train, acc_train = train_performance(self.model, self.device, 
+                self.training_data_loader, self.criterion, self.threshold,
+                flag_weighted_criterion = self.flag_weighted_criterion, 
+                criterion_dict = self.settings_data)
+            loss_test, acc_test = test_performance(self.model, self.device, 
+                self.validation_data_loader, self.criterion, self.threshold,
+                flag_weighted_criterion = self.flag_weighted_criterion, 
+                criterion_dict = self.settings_data)
             path_model_epoch = os.path.join(self.path_model_dir, 'model_epoch_' + str(epoch) + '.pt')
             torch.save(self.model, path_model_epoch)
             self.settings['training']['epoch_' + str(epoch)] = {}

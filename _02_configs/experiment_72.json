@@ -1,0 +1,15 @@
+{
+    "path_large_wiki_database" : "_01_data/_03_database/wiki.db", 
+    "table_name_wiki" : "wikipages",
+    "delimiter" : "\\k",
+    "n_gram" : 1,
+    "threshold" : 0.001,
+    "vocabulary_source" : "text",
+    "tf_idf_source" : "text",
+    "method_tokenization" : ["tokenize"],
+    "method_tf" : "constant_one",
+    "method_df" : "inverse_document_frequency",
+    "tags_in_db_flag" : 0,
+    "tag_list_selected" : ["INTJ", "NOUN", "NUM", "PROPN", "SYM", "X", "ADJ"]
+}
+

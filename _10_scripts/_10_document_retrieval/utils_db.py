@@ -3,6 +3,16 @@ import json
 import pickle 
 import sys
 
+def get_file_name_from_variable_list(variable_list, delimiter = '_'):
+    file_name = ''
+    for i in range(len(variable_list)):
+        variable = variable_list[i]
+        if i != len(variable_list)-1:
+            file_name += str(variable) + delimiter
+        else:
+            file_name += str(variable)
+    return file_name
+
 def mkdir_if_not_exist(path_dir):        
     try:
         os.makedirs(path_dir, exist_ok=True)

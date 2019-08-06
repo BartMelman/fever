@@ -16,7 +16,7 @@ import config
 
 class ClaimFile:
     """A sample Employee class"""
-    def __init__(self, id, path_dir_files):
+    def __init__(self, id, path_dir_files, tag_list_selected = ["INTJ", "NOUN", "NUM", "PROPN", "SYM", "X", "ADJ"]):
         # description: dictionary of a claim id with all the information from the different experiments
         # input:
         # - id : claim id number
@@ -29,12 +29,16 @@ class ClaimFile:
             self.claim_dict = {}
             self.claim_dict['claim'] = {}
             self.claim_dict['claim']['1_gram'] = {}
+            self.claim_dict['claim']['2_gram'] = {}
             self.claim_dict['claim']['1_gram']['nr_words'] = None
             self.claim_dict['claim']['1_gram']['nr_words_per_pos'] = get_empty_tag_dict(n_gram = 1)
+            self.claim_dict['claim']['2_gram']['nr_words_per_pos'] = get_empty_tag_dict(n_gram = 2, tag_list_selected = tag_list_selected)
             self.claim_dict['title'] = {}
             self.claim_dict['title']['1_gram'] = {}
+            self.claim_dict['title']['2_gram'] = {}
             self.claim_dict['text'] = {}
             self.claim_dict['text']['1_gram'] = {}
+            self.claim_dict['text']['2_gram'] = {}
             self.save_claim()
     
     def process_claims_selected(self, claim_dictionary, wiki_database):
@@ -134,18 +138,20 @@ class ClaimFile:
                     if str(id) not in self.claim_dict[source]['1_gram']:
                         self.claim_dict[source]['1_gram'][str(id)] = {}
 
+                    if 'nr_words' not in self.claim_dict[source]['1_gram'][str(id)]:
                         if source == 'title':
-                            text = tf_idf_db.vocab.wiki_database.get_title_from_id(id)
-                        elif source == 'text':
-                            text = tf_idf_db.vocab.wiki_database.get_text_from_id(id)
-                        else:
-                            raise ValueError('source not in options', source)
+                            if source == 'title':
+                                text = tf_idf_db.vocab.wiki_database.get_title_from_id(id)
+                            elif source == 'text':
+                                text = tf_idf_db.vocab.wiki_database.get_text_from_id(id)
+                            else:
+                                raise ValueError('source not in options', source)
 
-                        doc = tf_idf_db.vocab.wiki_database.nlp(text)
-                        claim_doc_tokenizer = ClaimDocTokenizer(doc, tf_idf_db.vocab.delimiter_words, tf_idf_db.delimiter_tag_word, tf_idf_db.list_pos_tokenization)
-                        _, nr_words_text_source = claim_doc_tokenizer.get_n_grams(tf_idf_db.vocab.method_tokenization, tf_idf_db.vocab.n_gram, tf_idf_db.tags_in_db_flag)
+                            doc = tf_idf_db.vocab.wiki_database.nlp(text)
+                            claim_doc_tokenizer = ClaimDocTokenizer(doc, tf_idf_db.vocab.delimiter_words, tf_idf_db.delimiter_tag_word, tf_idf_db.list_pos_tokenization)
+                            _, nr_words_text_source = claim_doc_tokenizer.get_n_grams(tf_idf_db.vocab.method_tokenization, tf_idf_db.vocab.n_gram, tf_idf_db.tags_in_db_flag)
 
-                        self.claim_dict[source]['1_gram'][str(id)]['nr_words'] = nr_words_text_source
+                            self.claim_dict[source]['1_gram'][str(id)]['nr_words'] = nr_words_text_source
 
                     # create empty tag dictionary for method for id if does not exist
                     if method_tokenization not in self.claim_dict[source]['1_gram'][str(id)].keys():
@@ -156,8 +162,15 @@ class ClaimFile:
 
                     # enter total tf_idf if not in dictionary 
                     if 'total_tf_idf' not in self.claim_dict[source]['1_gram'][str(id)][method_tokenization][tf_idf_name]:
-                        self.claim_dict[source]['1_gram'][str(id)][method_tokenization][tf_idf_name]['total_tf_idf'] = tf_idf_db.id_2_total_tf_idf[str(id)]
-
+                        # if source == 'title':
+                        #     self.claim_dict[source]['2_gram'][str(id)][method_tokenization][tf_idf_name]['total_tf_idf'] = tf_idf_db.id_2_total_tf_idf[str(id)]
+                        # else:
+                        #     self.claim_dict[source]['2_gram'][str(id)][method_tokenization][tf_idf_name]['total_tf_idf'] = -1.0
+                        if str(id) in tf_idf_db.id_2_total_tf_idf:
+                            self.claim_dict[source]['1_gram'][str(id)][method_tokenization][tf_idf_name]['total_tf_idf'] = tf_idf_db.id_2_total_tf_idf[str(id)]
+                        else:
+                            print(str(id), 'not in dict')
+                            self.claim_dict[source]['1_gram'][str(id)][method_tokenization][tf_idf_name]['total_tf_idf'] = -1.0
                     if id in dictionary:
                         tf_idf_value = dictionary[id]
                         self.claim_dict[source]['1_gram'][str(id)][method_tokenization][tf_idf_name][str(pos_id)] += tf_idf_value 
@@ -178,32 +191,84 @@ class ClaimFile:
                 word1 = tokenized_claim_list[i]
                 word2 = tokenized_claim_list[i+1]
 
-                pos_id = tag_2_id_dict[tag1 + tag2]
-                
-                word = tf_idf_db.vocab.delimiter_words.join([word1, word2])
+                dictionary_flag = False
+                if (tag_1 in tf_idf_db.tag_list_selected) and (tag_2 in tf_idf_db.tag_list_selected):
 
-                with HiddenPrints():
-                    dictionary = get_dict_from_n_gram([word], mydict_ids, mydict_tf_idf, tf_idf_db)
+                    word = tf_idf_db.vocab.delimiter_words.join([word1, word2])
+                    with HiddenPrints():
+                        dictionary = get_dict_from_n_gram([word], mydict_ids, mydict_tf_idf, tf_idf_db)
+                    dictionary_flag = True
+                #
+                for id in self.claim_dict['ids_selected']:
+                    # save number of words claim/title/text and total tf idf
+                    if str(id) not in self.claim_dict[source]['2_gram']:
+                        self.claim_dict[source]['2_gram'][str(id)] = {}
 
-                for id, tf_idf_value in dictionary.items():
-                    # only save the tf idf of ids in the selected id list
-                    if id in self.claim_dict['ids_selected']:
-                        # create dictionary if id not in dictionary
-                        if str(id) not in self.claim_dict[source]['2_gram']:
-                            self.claim_dict[source]['2_gram'][str(id)] = {}
+                    if 'nr_words' not in self.claim_dict[source]['2_gram'][str(id)]:
+                        if source == 'title':
+                            if source == 'title':
+                                text = tf_idf_db.vocab.wiki_database.get_title_from_id(id)
+                            elif source == 'text':
+                                text = tf_idf_db.vocab.wiki_database.get_text_from_id(id)
+                            else:
+                                raise ValueError('source not in options', source)
 
-                        # create empty tag dictionary for method for id if does not exist
-                        if method_tokenization not in self.claim_dict[source]['2_gram'][str(id)].keys():
-                            self.claim_dict[source]['2_gram'][str(id)][method_tokenization] = {}
-                            if tf_idf_name not in self.claim_dict[source]['2_gram'][str(id)][method_tokenization].keys():
-                                self.claim_dict[source]['2_gram'][str(id)][method_tokenization][tf_idf_name] = get_empty_tag_dict(n_gram = 2)
+                            doc = tf_idf_db.vocab.wiki_database.nlp(text)
+                            claim_doc_tokenizer = ClaimDocTokenizer(doc, tf_idf_db.vocab.delimiter_words, tf_idf_db.delimiter_tag_word, tf_idf_db.list_pos_tokenization)
+                            _, nr_words_text_source = claim_doc_tokenizer.get_n_grams(tf_idf_db.vocab.method_tokenization, tf_idf_db.vocab.n_gram, tf_idf_db.tags_in_db_flag)
 
-                        # enter total tf_idf if not in dictionary 
-                        if 'total_tf_idf' not in self.claim_dict[source]['2_gram'][str(id)][method_tokenization][tf_idf_name]:
+                            self.claim_dict[source]['2_gram'][str(id)]['nr_words'] = nr_words_text_source
+
+                    # create empty tag dictionary for method for id if does not exist
+                    if method_tokenization not in self.claim_dict[source]['2_gram'][str(id)].keys():
+                        self.claim_dict[source]['2_gram'][str(id)][method_tokenization] = {}
+                    
+                    if tf_idf_name not in self.claim_dict[source]['2_gram'][str(id)][method_tokenization].keys():
+                        self.claim_dict[source]['2_gram'][str(id)][method_tokenization][tf_idf_name] = get_empty_tag_dict(n_gram = 2, tag_list_selected = tf_idf_db.tag_list_selected)
+                    # enter total tf_idf if not in dictionary 
+                    if 'total_tf_idf' not in self.claim_dict[source]['2_gram'][str(id)][method_tokenization][tf_idf_name]:
+                        # if source == 'title':
+                        #     self.claim_dict[source]['2_gram'][str(id)][method_tokenization][tf_idf_name]['total_tf_idf'] = tf_idf_db.id_2_total_tf_idf[str(id)]
+                        # else:
+                        #     self.claim_dict[source]['2_gram'][str(id)][method_tokenization][tf_idf_name]['total_tf_idf'] = -1.0
+                        if str(id) in tf_idf_db.id_2_total_tf_idf:
                             self.claim_dict[source]['2_gram'][str(id)][method_tokenization][tf_idf_name]['total_tf_idf'] = tf_idf_db.id_2_total_tf_idf[str(id)]
+                        else:
+                            print(str(id), 'not in dict')
+                            self.claim_dict[source]['2_gram'][str(id)][method_tokenization][tf_idf_name]['total_tf_idf'] = -1.0
+                    if dictionary_flag == True:
+                        if id in dictionary:
+                            pos_id = tag_2_id_dict[tag_1 + tag_2]
+                            tf_idf_value = dictionary[id]
+                            self.claim_dict[source]['2_gram'][str(id)][method_tokenization][tf_idf_name][str(pos_id)] += tf_idf_value 
 
-                        # save tf_idf value 
-                        self.claim_dict[source]['2_gram'][str(id)][method_tokenization][tf_idf_name][str(pos_id)] += tf_idf_value   
+
+                #
+                
+
+                # for id, tf_idf_value in dictionary.items():
+                #     # only save the tf idf of ids in the selected id list
+                #     if id in self.claim_dict['ids_selected']:
+                #         # create dictionary if id not in dictionary
+                #         if str(id) not in self.claim_dict[source]['2_gram']:
+                #             self.claim_dict[source]['2_gram'][str(id)] = {}
+
+                #         # create empty tag dictionary for method for id if does not exist
+                #         if method_tokenization not in self.claim_dict[source]['2_gram'][str(id)].keys():
+                #             self.claim_dict[source]['2_gram'][str(id)][method_tokenization] = {}
+                #             if tf_idf_name not in self.claim_dict[source]['2_gram'][str(id)][method_tokenization].keys():
+                #                 self.claim_dict[source]['2_gram'][str(id)][method_tokenization][tf_idf_name] = get_empty_tag_dict(n_gram = 2)
+
+                #         # enter total tf_idf if not in dictionary 
+                #         if 'total_tf_idf' not in self.claim_dict[source]['2_gram'][str(id)][method_tokenization][tf_idf_name]:
+                #             if str(id) in tf_idf_db.id_2_total_tf_idf:
+                #                 self.claim_dict[source]['2_gram'][str(id)][method_tokenization][tf_idf_name]['total_tf_idf'] = tf_idf_db.id_2_total_tf_idf[str(id)]
+                #             else:
+                #                 print(str(id), 'not in database')
+                #                 self.claim_dict[source]['2_gram'][str(id)][method_tokenization][tf_idf_name]['total_tf_idf'] = 0.0
+
+                #         # save tf_idf value 
+                #         self.claim_dict[source]['2_gram'][str(id)][method_tokenization][tf_idf_name][str(pos_id)] += tf_idf_value   
         
         else:
             raise ValueError('Function only written for unigrams and bigrams')
@@ -226,24 +291,38 @@ class ClaimFile:
 
         elif tf_idf_db.n_gram == 2:
             doc = tf_idf_db.vocab.wiki_database.nlp(self.claim_dict['claim']['text'])
-            claim_doc_tokenizer = ClaimDocTokenizer(doc, tf_idf_db.vocab.delimiter_words, tf_idf_db.delimiter_tag_word, tf_idf_db.list_pos_tokenization)
-            n_grams_dict, nr_words = claim_doc_tokenizer.get_n_grams(tf_idf_db.vocab.method_tokenization, tf_idf_db.vocab.n_gram, tf_idf_db.tags_in_db_flag)
 
-            self.claim_dict['claim']['1_gram']['nr_words'] = sum(n_grams_dict.values())
+            tag_list = [word.pos_ for word in doc]      
+            nr_words_claim = len(tag_list)
+            self.claim_dict['claim']['2_gram']['nr_words'] = len(tag_list)-1
+            for i in range(len(tag_list)-1):
+                tag_1 = tag_list[i]
+                tag_2 = tag_list[i+1]
+                if (tag_1 in tf_idf_db.tag_list_selected) and (tag_2 in tf_idf_db.tag_list_selected):
+                    pos_id = tag_2_id_dict[tag_1 + tag_2]
+                    self.claim_dict['claim']['2_gram']['nr_words_per_pos'][str(pos_id)] += 1
+
+            # doc = tf_idf_db.vocab.wiki_database.nlp(self.claim_dict['claim']['text'])
+            # claim_doc_tokenizer = ClaimDocTokenizer(doc, tf_idf_db.vocab.delimiter_words, tf_idf_db.delimiter_tag_word, tf_idf_db.list_pos_tokenization)
+            # n_grams_dict, nr_words = claim_doc_tokenizer.get_n_grams(tf_idf_db.vocab.method_tokenization, tf_idf_db.vocab.n_gram, tf_idf_db.tags_in_db_flag)
+
+            # self.claim_dict['claim']['2_gram']['nr_words'] = sum(n_grams_dict.values())
             
-            delimiter_position_tag = '\z'
+            # delimiter_position_tag = '\z'
 
-            for key, count in n_grams_dict.items():
-                splitted_key = key.split(tf_idf_db.delimiter_words)
-                key1_splitted = splitted_key[0].split(delimiter_position_tag)
-                key2_splitted = splitted_key[1].split(delimiter_position_tag)
-                tag1 = splitted_key[0].split(delimiter_position_tag)[0]
-                tag2 = splitted_key[1].split(delimiter_position_tag)[0]
-                word1 = splitted_key[0].split(delimiter_position_tag)[1]
-                word2 = splitted_key[1].split(delimiter_position_tag)[1]
+            # for key, count in n_grams_dict.items():
+            #     print(key, count)
+            #     # splitted_key = key.split(tf_idf_db.delimiter_words)
+            #     # key1_splitted = splitted_key[0].split(delimiter_position_tag)
+            #     # key2_splitted = splitted_key[1].split(delimiter_position_tag)
+            #     # print(key1_splitted, key2_splitted)
+            #     # tag1 = splitted_key[0].split(delimiter_position_tag)[0]
+            #     # tag2 = splitted_key[1].split(delimiter_position_tag)[0]
+            #     # word1 = splitted_key[0].split(delimiter_position_tag)[1]
+            #     # word2 = splitted_key[1].split(delimiter_position_tag)[1]
 
-                pos_id = tag_2_id_dict[tag1 + tag2]
-                self.claim_dict['claim']['1_gram']['nr_words_per_pos'][str(pos_id)] += count
+            #     pos_id = tag_2_id_dict[tag1 + tag2]
+            #     self.claim_dict['claim']['2_gram']['nr_words_per_pos'][str(pos_id)] += count
             self.save_claim()
             
         else:
@@ -254,26 +333,27 @@ class ClaimFile:
             dict_save_json(self.claim_dict, self.path_claim)
 
 class ClaimTensorDatabase():
-    def __init__(self, setup, wiki_database, claim_data_set, selection_generation_or_selected, selection_experiment = 31, selection_K = 100):
+    def __init__(self, setup, wiki_database, claim_data_set, selection_experiment_dict):
         # === variables === #
         if setup == 1:
             self.experiment_list = [31, 37] # [31,32,33,34,35,36,37]
         elif setup == 2:
-            self.experiment_list = [31, 37, 41]
+            self.experiment_list = [31, 41, 51] # 31, 41, 51
         elif setup == 3:
             self.experiment_list = [31, 32, 33, 34, 35, 36, 37]
 
         # --- process inputs --- #
         self.claim_data_set = claim_data_set
-        self.selection_experiment = selection_experiment
-        self.selection_K = selection_K
-        self.selection_generation_or_selected = selection_generation_or_selected
+        self.selection_experiment_dict = selection_experiment_dict
+        self.selection_experiment_nr = self.selection_experiment_dict['experiment_nr']
+        self.selection_K = self.selection_experiment_dict['K']
+        self.selection_generation_or_selected = self.selection_experiment_dict['selection_generation_or_selected']
 
         # === process === #
         self.path_dir_claim_database = os.path.join(config.ROOT, config.DATA_DIR, config.DATABASE_DIR)
         self.path_raw_claim_data = os.path.join(config.ROOT, config.DATA_DIR, config.RAW_DATA_DIR)
         self.path_results_dir = os.path.join(config.ROOT, config.RESULTS_DIR, config.SCORE_COMBINATION_DIR)
-        self.path_setup_dir = os.path.join(self.path_results_dir, 'setup_' + str(self.claim_data_set) + '_' + str(setup) + '_' + str(self.selection_experiment) + '_' + str(self.selection_K) + '_' + selection_generation_or_selected)
+        self.path_setup_dir = os.path.join(self.path_results_dir, 'setup_' + str(self.claim_data_set) + '_' + str(setup) + '_' + str(self.selection_experiment_nr) + '_' + str(self.selection_K) + '_' + self.selection_generation_or_selected)
         self.path_tags_unigram = os.path.join(self.path_setup_dir, 'tags_' + self.claim_data_set + '_n_gram_' + str(1) + '.json')
         self.path_claims_dir = os.path.join(self.path_setup_dir, 'claims_tensor_db_' + self.claim_data_set)
         self.path_label_correct_evidence_false_dir = os.path.join(self.path_setup_dir, self.claim_data_set + '_correct_false_tensor')
@@ -301,7 +381,6 @@ class ClaimTensorDatabase():
         # self.wiki_database = WikiDatabaseSqlite(self.path_wiki_database_dir, self.path_wiki_pages)
         self.claim_database = ClaimDatabase(path_dir_database = self.path_dir_claim_database, path_raw_data = self.path_raw_claim_data, claim_data_set = self.claim_data_set)
 
-        self.claim_database.nr_claims = 1000
         self.nr_claims = self.claim_database.nr_claims
 
         self.tag_2_id_unigram_dict = get_tag_2_id_dict_unigrams()
@@ -309,9 +388,12 @@ class ClaimTensorDatabase():
         self.tag_dict_unigrams = get_tag_dict(self.claim_database, 1, self.path_tags_unigram, wiki_database)
         self.process_claim_tag_list(wiki_database)
         self.process_nr_words_per_tag(n_gram = 1, wiki_database = wiki_database)
-        # self.process_nr_words_per_tag(n_gram = 2)
-        self.process_claims_in_selection_list(experiment_nr = self.selection_experiment, K = self.selection_K, score_method = 'f_score', 
-            title_tf_idf_normalise_flag = False, wiki_database = wiki_database)
+        self.process_nr_words_per_tag(n_gram = 2, wiki_database = wiki_database)
+        self.process_claims_in_selection_list(experiment_nr = self.selection_experiment_dict['experiment_nr'], 
+            K = self.selection_experiment_dict['K'], 
+            score_method = 'f_score', 
+            title_tf_idf_normalise_flag = self.selection_experiment_dict['title_tf_idf_normalise_flag'], 
+            wiki_database = wiki_database)
         self.process_selected_ids(wiki_database)
         self.save_2_tensor()
 
@@ -352,7 +434,7 @@ class ClaimTensorDatabase():
             experiment_nr = 37
             tag_2_id_dict = self.tag_2_id_unigram_dict
         elif n_gram == 2:
-            experiment_nr = 41
+            experiment_nr = 51
             tag_2_id_dict = self.tag_2_id_bigram_dict
         else:
             raise ValueError('only written for unigrams and bigrams', n_gram)
@@ -362,7 +444,7 @@ class ClaimTensorDatabase():
             
         for id in tqdm(range(self.nr_claims), desc = 'nr words per pos'):
             file = ClaimFile(id = id, path_dir_files = self.path_claims_dir)
-            file.process_nr_words_per_pos(tf_idf_db, self.tag_2_id_unigram_dict)
+            file.process_nr_words_per_pos(tf_idf_db, tag_2_id_dict)
 
     def process_selected_ids(self, wiki_database):
         print('claim database: insert selected ids')
@@ -499,13 +581,19 @@ class ClaimTensorDatabase():
 
 if __name__ == '__main__':
 
-    claim_data_set = 'dev'
+    claim_data_set = 'train_dev'
     path_wiki_pages = os.path.join(config.ROOT, config.DATA_DIR, config.WIKI_PAGES_DIR, 'wiki-pages')
     path_wiki_database_dir = os.path.join(config.ROOT, config.DATA_DIR, config.DATABASE_DIR)
     wiki_database = WikiDatabaseSqlite(path_wiki_database_dir, path_wiki_pages)
 
+    selection_experiment_dict = {}
+    selection_experiment_dict['experiment_nr'] = 31
+    selection_experiment_dict['K'] = 100
+    selection_experiment_dict['title_tf_idf_normalise_flag'] = True
+    selection_experiment_dict['selection_generation_or_selected'] = 'selected' # 
+
     setup = 1
 
-    ClaimTensorDatabase(setup, wiki_database, claim_data_set)
+    ClaimTensorDatabase(setup, wiki_database, claim_data_set, selection_experiment_dict)
     
     

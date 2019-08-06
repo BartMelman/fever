@@ -213,6 +213,9 @@ class Text:
     def tokenize(self):
         return [word.text for word in self.text]
 
+    def tokenize_lower(self):
+        return [(word.text).lower() for word in self.text]
+
     def tokenize_lemma(self):
         return [word.lemma_ for word in self.text]
 

@@ -87,6 +87,7 @@ class ClaimDatabase:
         else:
             print('- claim database already exists')
         
+        print(self.path_settings)
         if os.path.isfile(self.path_settings):
             self.settings = dict_load_json(self.path_settings)
             self.nr_claims = self.settings['nr_claims']

@@ -58,11 +58,11 @@ def get_tag_dict(claim_database, n_gram, path_tags, wiki_database):
         dict_save_json(dictionary_tags, path_tags)
     return dictionary_tags
 
-def get_empty_tag_dict(n_gram):
+def get_empty_tag_dict(n_gram, tag_list_selected=None):
     if n_gram == 1:
         tag_2_id_dict = get_tag_2_id_dict_unigrams()
     elif n_gram == 2:
-        tag_2_id_dict = get_tag_2_id_dict_bigrams()
+        tag_2_id_dict = get_tag_2_id_dict_bigrams(tag_list_selected)
     else:
         raise ValueError('code written for unigrams and bigrams', n_gram)
 
@@ -113,7 +113,8 @@ def get_tf_idf_from_exp(experiment_nr, wiki_database):
     return tf_idf_db
 
 def get_tf_idf_name(experiment_nr):
-    if experiment_nr in [31,34, 37]:
+    if experiment_nr in [31,34, 37, 41, 51, 61]:
+        
         return 'tf_idf'
     elif experiment_nr in [32,35, 38]:
         return 'raw_count_idf'
