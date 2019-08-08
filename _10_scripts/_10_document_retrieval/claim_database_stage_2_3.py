@@ -46,7 +46,7 @@ class ClaimDatabaseStage_2_3:
             self.settings = {}
         
         # --- set the paths for the databases --- #
-        stage_list = ['stage_2', 'stage_3']
+        stage_list = ['stage_2'] # ['stage_2', 'stage_3']
         data_set_type_list = ['train', 'validation', 'dev']
         label_list = ['correct', 'refuted', 'nei']
         self.path_db = {}
@@ -62,7 +62,7 @@ class ClaimDatabaseStage_2_3:
                         stage + '_' + data_set_type + '_' + label + '.sqlite')
 
         # --- set paths for pickle file --- #
-        method_combination_list = ['equal', 'one_from_every_claim']
+        method_combination_list = ['max_correct']
         
         self.path_pickle = {}
         for stage in stage_list:
@@ -210,7 +210,87 @@ class ClaimDatabaseStage_2_3:
                             labels.append('NOT ENOUGH INFO')
                         else:
                             labels.append(claim_dict['labels'])
+            # ==== #
+            
+            elif method_combination == 'max_correct':
+                path_stage_2_correct_db = self.path_db[stage]['correct'][dataset_type]
+                path_stage_2_refuted_db = self.path_db[stage]['refuted'][dataset_type]
+                path_stage_2_nei_db = self.path_db[stage]['nei'][dataset_type]
 
+                stage_2_correct_db = SqliteDict(path_stage_2_correct_db)
+                stage_2_refuted_db = SqliteDict(path_stage_2_refuted_db)
+                stage_2_nei_db = SqliteDict(path_stage_2_nei_db)
+
+                correct_keys_list = list(stage_2_correct_db.keys())
+                refuted_keys_list = list(stage_2_refuted_db.keys())
+                nei_keys_list = list(stage_2_nei_db.keys())
+
+                ids = []
+                premises = []
+                hypotheses = []
+                premises_part_of_speech = []
+                premises_out_of_vocabulary = []
+                hypotheses_part_of_speech = []
+                hypotheses_out_of_vocabulary = []
+                labels = []
+                
+                for idx in tqdm(range(self.settings[stage][dataset_type]['nr_correct']), 
+                                desc='save pickle_correct_' + dataset_type):
+                    # update correct
+                    key_correct = correct_keys_list[idx]
+                    claim_dict = stage_2_correct_db[key_correct][0]
+                    ids.append(claim_dict['ids'])
+                    premises.append(claim_dict['premises'])
+                    premises_part_of_speech.append(claim_dict["premises_tags"])
+                    ids_hypothesis, ids_evidence = hypothesis_evidence_2_index(hypothesis = claim_dict['hypotheses'], 
+                                                                             premise = claim_dict['premises'], 
+                                                                             max_length = 75, 
+                                                                             randomise_flag = True)
+                    premises_out_of_vocabulary.append(ids_evidence)
+                    hypotheses.append(claim_dict['hypotheses'])
+                    hypotheses_part_of_speech.append(claim_dict["hypotheses_tags"])
+                    hypotheses_out_of_vocabulary.append(ids_hypothesis)
+                    labels.append(claim_dict['labels'])
+                idx_refuted = 0
+                for idx_refuted in tqdm(range(self.settings[stage][dataset_type]['nr_correct']), 
+                                desc='save pickle_refuted_' + dataset_type):
+#                     for idx in tqdm(range(self.settings[stage][dataset_type]['nr_refuted']), 
+#                                     desc='save pickle_refuted_' + dataset_type):
+                        # update refuted
+                        idx_tmp = idx_refuted % self.settings[stage][dataset_type]['nr_refuted']
+                        key_refuted = refuted_keys_list[idx_tmp]
+                        claim_dict = stage_2_refuted_db[key_refuted][0]
+                        ids.append(claim_dict['ids'])
+                        premises.append(claim_dict['premises'])
+                        premises_part_of_speech.append(claim_dict["premises_tags"])
+                        ids_hypothesis, ids_evidence = hypothesis_evidence_2_index(hypothesis = claim_dict['hypotheses'], 
+                                                                                 premise = claim_dict['premises'], 
+                                                                                 max_length = 75, 
+                                                                                 randomise_flag = True)
+                        premises_out_of_vocabulary.append(ids_evidence)
+                        hypotheses.append(claim_dict['hypotheses'])
+                        hypotheses_part_of_speech.append(claim_dict["hypotheses_tags"])
+                        hypotheses_out_of_vocabulary.append(ids_hypothesis)
+                        labels.append(claim_dict['labels'])
+                    
+                for idx in tqdm(range(self.settings[stage][dataset_type]['nr_correct']), desc='save pickle_nei_'+dataset_type):
+                    # update not enough info
+                    key_nei = nei_keys_list[idx]
+                    claim_dict = stage_2_nei_db[key_nei][0]
+                    ids.append(claim_dict['ids'])
+                    premises.append(claim_dict['premises'])
+                    premises_part_of_speech.append(claim_dict["premises_tags"])
+                    ids_hypothesis, ids_evidence = hypothesis_evidence_2_index(hypothesis = claim_dict['hypotheses'], 
+                                                                             premise = claim_dict['premises'], 
+                                                                             max_length = 75, 
+                                                                             randomise_flag = True)
+                    premises_out_of_vocabulary.append(ids_evidence)
+                    hypotheses.append(claim_dict['hypotheses'])
+                    hypotheses_part_of_speech.append(claim_dict["hypotheses_tags"])
+                    hypotheses_out_of_vocabulary.append(ids_hypothesis)
+                    labels.append(claim_dict['labels'])
+                    
+            # ==== #
             elif method_combination == 'one_from_every_claim':
                 path_stage_2_correct_db = self.path_db[stage]['correct'][dataset_type]
                 path_stage_2_refuted_db = self.path_db[stage]['refuted'][dataset_type]
@@ -282,6 +362,20 @@ class ClaimDatabaseStage_2_3:
                     hypotheses_out_of_vocabulary.append(ids_hypothesis)
                     labels.append(claim_dict['labels'])
 
+#             c = list(zip(ids, premises, hypotheses, premises_part_of_speech, premises_out_of_vocabulary, hypotheses_part_of_speech, hypotheses_out_of_vocabulary, labels))
+#             random.shuffle(c)
+
+#             ids, premises, hypotheses, premises_part_of_speech, premises_out_of_vocabulary, hypotheses_part_of_speech, hypotheses_out_of_vocabulary, labels = zip(*c)
+
+#             target_dict = {"ids": ids,
+#                 "premises": premises,
+#                 "hypotheses": hypotheses,
+#                 "premises_part_of_speech": premises_part_of_speech,
+#                 "premises_out_of_vocabulary": premises_out_of_vocabulary,
+#                 "hypotheses_part_of_speech": hypotheses_part_of_speech,
+#                 "hypotheses_out_of_vocabulary": hypotheses_out_of_vocabulary,           
+#                 "labels": labels}
+            
             c = list(zip(ids, premises, hypotheses, premises_part_of_speech, premises_out_of_vocabulary, hypotheses_part_of_speech, hypotheses_out_of_vocabulary, labels))
             random.shuffle(c)
 
@@ -295,6 +389,9 @@ class ClaimDatabaseStage_2_3:
                 "hypotheses_part_of_speech": hypotheses_part_of_speech,
                 "hypotheses_out_of_vocabulary": hypotheses_out_of_vocabulary,           
                 "labels": labels}
+            
+            
+            
 
             with open(os.path.join(self.pickle_files_dir, path_save), "wb") as pkl_file:
                 pickle.dump(target_dict, pkl_file)
@@ -738,7 +835,7 @@ if __name__ == '__main__':
     path_dir_database = os.path.join(config.ROOT,'claim_db')
     path_raw_data = os.path.join(config.ROOT, config.DATA_DIR, config.RAW_DATA_DIR)
     fraction_validation = 0.1
-    method_combination = 'one_from_every_claim' # 'equal', one_from_every_claim
+    method_combination = 'max_correct' # 'equal', one_from_every_claim
     claim_database = ClaimDatabaseStage_2_3(path_database_dir = path_dir_database, 
                                          path_raw_data = path_raw_data, 
                                          fraction_validation = fraction_validation,

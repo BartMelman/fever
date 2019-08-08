@@ -334,13 +334,14 @@ class ClaimFile:
 
 class ClaimTensorDatabase():
     def __init__(self, setup, wiki_database, claim_data_set, selection_experiment_dict):
+        self.setup = setup
         # === variables === #
-        if setup == 1:
+        if self.setup == 1:
             self.experiment_list = [31, 37] # [31,32,33,34,35,36,37]
-        elif setup == 2:
+        elif self.setup == 2:
             self.experiment_list = [31, 41, 51] # 31, 41, 51
-        elif setup == 3:
-            self.experiment_list = [31, 32, 33, 34, 35, 36, 37]
+        elif self.setup == 3:
+            self.experiment_list = [31, 51, 43, 73]
 
         # --- process inputs --- #
         self.claim_data_set = claim_data_set
@@ -363,7 +364,8 @@ class ClaimTensorDatabase():
         self.path_settings_dict = os.path.join(self.path_setup_dir, 'settings.json')
         self.path_dict_variable_list_dir = os.path.join(self.path_setup_dir, self.claim_data_set + '_variables_labels')
         self.tag_list_selected = ["INTJ", "NOUN", "NUM", "PROPN", "SYM", "X", "ADJ"]
-
+        print('setup', self.setup)
+        print('experiment_list', self.experiment_list)
         if not os.path.isdir(self.path_setup_dir):
             self.settings = {}
             mkdir_if_not_exist(self.path_setup_dir)
@@ -381,6 +383,7 @@ class ClaimTensorDatabase():
         # self.wiki_database = WikiDatabaseSqlite(self.path_wiki_database_dir, self.path_wiki_pages)
         self.claim_database = ClaimDatabase(path_dir_database = self.path_dir_claim_database, path_raw_data = self.path_raw_claim_data, claim_data_set = self.claim_data_set)
 
+        self.claim_database.nr_claims = 100
         self.nr_claims = self.claim_database.nr_claims
 
         self.tag_2_id_unigram_dict = get_tag_2_id_dict_unigrams()

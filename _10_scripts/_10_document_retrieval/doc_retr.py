@@ -16,7 +16,7 @@ if __name__ == '__main__':
 
     wiki_database = WikiDatabaseSqlite(path_wiki_database_dir, path_wiki_pages)
 
-    experiment_list = [37]#[31, 32, 33, 34, 35, 36, 37,38, 39]
+    experiment_list = [37] # [31, 32, 33, 34, 35, 36, 37,38, 39]
 
     for experiment_nr in experiment_list:
         # experiment_nr = 11

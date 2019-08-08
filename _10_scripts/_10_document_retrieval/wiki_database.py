@@ -137,6 +137,18 @@ class WikiDatabaseSqlite:
         settings['nr_wikipedia_pages'] = id_cnt
         dict_save_json(settings, self.path_settings)
 
+    def get_lines_from_id(self, id):
+        dict_wiki_page = self.id_2_lines_db[str(id)]
+        nr_lines = dict_wiki_page['nr_lines']
+        lines_list = []
+        for line_nr in range(nr_lines):
+            if str(line_nr) in dict_wiki_page:
+                line_text = dict_wiki_page[str(line_nr)]
+                lines_list.append(line_text)
+            else:
+                lines_list.append('')
+        return lines_list
+        
     def get_lines_list_from_title(self, title):
         dict_wiki_page = self.title_2_lines_db[title]
         nr_lines = dict_wiki_page['nr_lines']
