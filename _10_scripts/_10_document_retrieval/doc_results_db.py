@@ -56,7 +56,7 @@ class ClaimFile:
                         id = wiki_database.get_id_from_title(title)
                         id_list.append(id)
             self.claim_dict['ids_correct_docs'] = id_list
-
+        
         if 'docs_selected' in claim_dictionary:
             if 'ids_generated' in self.claim_dict:
                 self.claim_dict['ids_generated'] += claim_dictionary['docs_selected']
@@ -383,7 +383,7 @@ class ClaimTensorDatabase():
         # self.wiki_database = WikiDatabaseSqlite(self.path_wiki_database_dir, self.path_wiki_pages)
         self.claim_database = ClaimDatabase(path_dir_database = self.path_dir_claim_database, path_raw_data = self.path_raw_claim_data, claim_data_set = self.claim_data_set)
 
-        self.claim_database.nr_claims = 100
+        # self.claim_database.nr_claims = 100
         self.nr_claims = self.claim_database.nr_claims
 
         self.tag_2_id_unigram_dict = get_tag_2_id_dict_unigrams()

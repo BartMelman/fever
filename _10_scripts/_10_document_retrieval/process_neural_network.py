@@ -11,13 +11,14 @@ from neural_network import NeuralNetwork
 import config
 
 class PredictLabels():
-    def __init__(self, K, threshold, method, claim_tensor_db, wiki_database, neural_network, claim_database):
+    def __init__(self, K, threshold, method, claim_tensor_db, wiki_database, neural_network, claim_database, max_claim_nr = None):
         # --- process input --- #
         self.K = K
         self.threshold = threshold
         self.method = method
         self.claim_tensor_db = claim_tensor_db
         self.model_nn = neural_network.model
+        self.max_claim_nr = max_claim_nr
         # --- variables --- #
         self.nr_claims = self.claim_tensor_db.settings['nr_total']
         self.path_predict_label_dir = os.path.join(claim_tensor_db.path_setup_dir, 'Predictions_' + str(self.K) + '_' + str(self.threshold) + '_' + method + '_' + neural_network.file_name)
@@ -30,14 +31,19 @@ class PredictLabels():
             self.settings = dict_load_json(self.path_settings)
         else:
             self.settings = {}
-            self.get_accuracy_save_results(wiki_database, claim_database)
+            self.get_accuracy_save_results(wiki_database, claim_database, self.max_claim_nr)
             dict_save_json(self.settings, self.path_settings)
         
-    def get_accuracy_save_results(self, wiki_database, claim_database):
+    def get_accuracy_save_results(self, wiki_database, claim_database, max_claim_nr = None):
         nr_correct = 0
         nr_documents_selected = 0
         
-        for id_nr in tqdm(range(self.nr_claims)):
+        if max_claim_nr is not None:
+            nr_claims = max_claim_nr
+        else:
+            nr_claims = self.nr_claims
+
+        for id_nr in tqdm(range(nr_claims)):
             path_file = os.path.join(self.claim_tensor_db.path_dict_variable_list_dir, str(id_nr) + '.json')
             dict_variables = dict_load_json(path_file)
             id = dict_variables['id']

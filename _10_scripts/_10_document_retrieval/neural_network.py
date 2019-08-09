@@ -264,13 +264,7 @@ def test_performance(model, device, test_loader, criterion, threshold, flag_weig
             data, target = data.to(device), target.to(device)
             target = target.view(-1, 1)
             output = model(data)
-            if flag_weighted_criterion == True:
-                nr_correct = criterion_dict['nr_correct_true'] + criterion_dict['nr_refuted_true']
-                nr_incorrect =criterion_dict['nr_correct_false'] + criterion_dict['nr_refuted_false']
-                weight = nr_incorrect / float(nr_correct)
-            else:
-                weight = 1.0
-            test_loss += criterion(output, target, target*weight).item() # sum up batch loss
+            test_loss += criterion(output, target).item() # sum up batch loss
             # pred = output.argmax(dim=1, keepdim=True) # get the index of the max log-probability
             threshold = 0.5
             target_unit8 = target>0.5

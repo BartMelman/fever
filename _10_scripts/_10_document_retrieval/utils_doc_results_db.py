@@ -118,7 +118,7 @@ def get_tf_idf_name(experiment_nr):
         return 'tf_idf'
     elif experiment_nr in [32,35, 38]:
         return 'raw_count_idf'
-    elif experiment_nr in [33,36]:
+    elif experiment_nr in [33,36, 43, 73]:
         return 'idf'
     else:
         raise ValueError('experiment_nr not in selection', experiment_nr)
