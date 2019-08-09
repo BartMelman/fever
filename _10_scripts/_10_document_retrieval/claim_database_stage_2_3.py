@@ -62,7 +62,7 @@ class ClaimDatabaseStage_2_3:
                         stage + '_' + data_set_type + '_' + label + '.sqlite')
 
         # --- set paths for pickle file --- #
-        method_combination_list = ['max_correct']
+        method_combination_list = ['max_correct', 'one_from_every_claim', 'equal']
         
         self.path_pickle = {}
         for stage in stage_list:
@@ -234,7 +234,7 @@ class ClaimDatabaseStage_2_3:
                 hypotheses_out_of_vocabulary = []
                 labels = []
                 
-                for idx in tqdm(range(self.settings[stage][dataset_type]['nr_correct']), 
+                for idx in tqdm(range(self.settings[stage][dataset_type]['nr_supports']), 
                                 desc='save pickle_correct_' + dataset_type):
                     # update correct
                     key_correct = correct_keys_list[idx]
@@ -252,7 +252,7 @@ class ClaimDatabaseStage_2_3:
                     hypotheses_out_of_vocabulary.append(ids_hypothesis)
                     labels.append(claim_dict['labels'])
                 idx_refuted = 0
-                for idx_refuted in tqdm(range(self.settings[stage][dataset_type]['nr_correct']), 
+                for idx_refuted in tqdm(range(self.settings[stage][dataset_type]['nr_supports']), 
                                 desc='save pickle_refuted_' + dataset_type):
 #                     for idx in tqdm(range(self.settings[stage][dataset_type]['nr_refuted']), 
 #                                     desc='save pickle_refuted_' + dataset_type):
@@ -273,7 +273,7 @@ class ClaimDatabaseStage_2_3:
                         hypotheses_out_of_vocabulary.append(ids_hypothesis)
                         labels.append(claim_dict['labels'])
                     
-                for idx in tqdm(range(self.settings[stage][dataset_type]['nr_correct']), desc='save pickle_nei_'+dataset_type):
+                for idx in tqdm(range(self.settings[stage][dataset_type]['nr_supports']), desc='save pickle_nei_'+dataset_type):
                     # update not enough info
                     key_nei = nei_keys_list[idx]
                     claim_dict = stage_2_nei_db[key_nei][0]
@@ -388,10 +388,7 @@ class ClaimDatabaseStage_2_3:
                 "premises_out_of_vocabulary": premises_out_of_vocabulary,
                 "hypotheses_part_of_speech": hypotheses_part_of_speech,
                 "hypotheses_out_of_vocabulary": hypotheses_out_of_vocabulary,           
-                "labels": labels}
-            
-            
-            
+                "labels": labels}           
 
             with open(os.path.join(self.pickle_files_dir, path_save), "wb") as pkl_file:
                 pickle.dump(target_dict, pkl_file)
