@@ -1,0 +1,72 @@
+# === general links === #
+# Github hexaf folder: https://github.com/uclmr/fever
+# James Thorne folder: https://github.com/j6mes/fever-uclmr-system
+# Bart Melman folder: https://github.com/BartMelman/fact_checking
+# Jack folder: https://github.com/takuma-ynd/jack
+bash ./install_packages.sh
+
+unzip tmp/data.zip -d .
+
+# === create folder system === #
+mkdir 01_code
+cd 01_code
+mkdir 01_main
+mkdir 02_hexaf
+cd 01_main
+
+git init
+git remote add origin https://github.com/BartMelman/fact_checking
+git pull origin master
+
+cd fever
+
+# === install packages === #
+bash install_packages.sh
+
+mkdir -pv hexaf/fever
+mkdir -pv hexaf/fever/results
+
+pip install -r requirements.txt
+
+mkdir tmp
+cd tmp
+
+# === download data === #
+wget http://tti-coin.jp/data/yoneda/fever/base+sampling2+evscores+rerank+train+dev+test-shared_test.ver0727_newaggr_submission.zip
+
+wget http://tti-coin.jp/data/yoneda/fever/data.zip
+
+cd ..
+
+# === unzip data === #
+unzip tmp/data.zip -d hexaf/fever/.
+
+unzip tmp/base+sampling2+evscores+rerank+train+dev+test-shared_test.ver0727_newaggr_submission.zip -d hexaf/fever/results
+
+cp initial_setup_fever2.sh hexaf/fever/initial_setup_fever2.sh
+chmod u+x initial_setup_fever2.sh 
+chmod u+x hexaf/fever/initial_setup_fever2.sh
+
+pip install pillow
+pip install --upgrade spacy
+
+mkdir -pv src
+
+mkdir results
+
+pip install nltk
+
+rm -r results/first_try
+python3 pipeline.py --config configs/base_config.json --model first_try
+
+
+set root_dir in config and pipeline.py
+
+fever-baselines-init.sh for data, add l to json at the end of line maybe_download data/fever-data/train.jsonl https://s3-eu-west-1.amazonaws.com/fever.public/train.jsonl
+
+"load_dir": "esim_snli"
+
+
+
+
+

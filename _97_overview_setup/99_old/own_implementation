@@ -1,0 +1,111 @@
+# === general links === #
+# Bart Melman folder: https://github.com/BartMelman/fact_checking
+# PDF: https://arxiv.org/pdf/1811.07039.pdf
+# Github: https://github.com/easonnie/combine-FEVER-NSMN
+# Azure: https://portal.azure.com/ 
+# Database: https://github.com/sheffieldnlp/fever-naacl-2018/
+# NSMN: 
+mkdir -p nsmn
+
+# === create environment === #
+sudo apt-get install python3-venv
+python3 -m venv 03_environment/03_fever
+
+source 03_environment/03_fever/bin/activate
+
+bash setup.sh
+
+pip install wheel
+pip install jsonl
+
+
+
+
+
+
+# === install pytorch 0.4.1 === #
+https://pytorch.org/get-started/previous-versions/
+sudo apt-get install python3.6
+pip3 install wheel
+nvcc --version #check CONDA version
+pip3 install torch==0.4.1 -f https://download.pytorch.org/whl/cpu/stable
+pip3 install allennlp==0.7.1
+pip3 install sqlitedict
+sudo apt-get install wget
+pip3 install flashtext
+pip3 install pexpect
+pip3 install fire
+pip3 install inflection
+# pip3 isntall utils # extra
+
+
+
+
+
+pip install elasticsearch
+
+
+
+
+python3 _10_scripts/_01_database/build_db.py
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# === activate environment === #
+
+source 02_environment/02_nsmn/bin/activate
+
+# === packages === #
+
+# pip install torchvision
+# pip install tensorflow-gpu
+
+
+# === install pytorch 0.4.1 === #
+https://pytorch.org/get-started/previous-versions/
+sudo apt-get install python3.6
+pip3 install wheel
+nvcc --version #check CONDA version
+pip3 install torch==0.4.1 -f https://download.pytorch.org/whl/cpu/stable
+pip3 install allennlp==0.7.1
+pip3 install sqlitedict
+sudo apt-get install wget
+pip3 install flashtext
+pip3 install pexpect
+pip3 install fire
+pip3 install inflection
+# pip3 isntall utils # extra
+
+# === clone repository === #
+
+git clone https://github.com/easonnie/combine-FEVER-NSMN.git
+
+# === preparation script === #
+source setup.sh
+bash ./scripts/prepare.sh
+
+# === 
+python3 src/pipeline/prepare_data.py tokenization        # Tokenization
+python3 src/pipeline/prepare_data.py build_database      # Build document 
+
+mkdir 02_configs
+
+python3 src/pipeline/auto_pipeline.py
+
+
+

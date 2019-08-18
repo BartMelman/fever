@@ -1,0 +1,40 @@
+# === general links === #
+# Bart Melman folder: https://github.com/BartMelman/fact_checking
+# PDF: https://arxiv.org/pdf/1811.07039.pdf
+# Github: https://github.com/easonnie/combine-FEVER-NSMN
+# Azure: https://portal.azure.com/ 
+# Database: https://github.com/sheffieldnlp/fever-naacl-2018/
+# ESIM: https://github.com/coetaur0/ESIM
+# NSMN: 
+
+ssh -L 60001:localhost:60001 BartMelman@13.68.202.118
+jupyter notebook --no-browser --port=60001
+
+mkdir -p 01_thesis/01_code
+
+sudo apt install screen
+
+cd scripts
+python3 fetch_data.py
+python3 scripts/preprocessing/preprocess_snli.py 
+python3 scripts/training/train_snli.py 
+
+
+
+
+
+
+Driver:   Installed
+Toolkit:  Installed in /usr/local/cuda-10.1/
+Samples:  Installed in /home/BartMelman/, but missing recommended libraries
+
+Please make sure that
+ -   PATH includes /usr/local/cuda-10.1/bin
+ -   LD_LIBRARY_PATH includes /usr/local/cuda-10.1/lib64, or, add /usr/local/cuda-10.1/lib64 to /etc/ld.so.conf and run ldconfig as root
+
+To uninstall the CUDA Toolkit, run cuda-uninstaller in /usr/local/cuda-10.1/bin
+To uninstall the NVIDIA Driver, run nvidia-uninstall
+
+Please see CUDA_Installation_Guide_Linux.pdf in /usr/local/cuda-10.1/doc/pdf for detailed information on setting up CUDA.
+Logfile is /var/log/cuda-installer.log
+

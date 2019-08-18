@@ -1,0 +1,14 @@
+# === general links === #
+# Github hexaf folder: https://github.com/uclmr/fever
+# James Thorne folder: https://github.com/j6mes/fever-uclmr-system
+# Bart Melman folder: https://github.com/BartMelman/fact_checking
+# Jack folder: https://github.com/takuma-ynd/jack
+
+
+git init
+git add .
+git commit -m "hoi"
+git remote add origin https://github.com/BartMelman/fact_checking.git
+git push -u origin master
+
+

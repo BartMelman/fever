@@ -1,0 +1,206 @@
+# === general links === #
+# Github hexaf folder: https://github.com/uclmr/fever
+# James Thorne folder: https://github.com/j6mes/fever-uclmr-system
+# Bart Melman folder: https://github.com/BartMelman/fact_checking
+# Jack folder: https://github.com/takuma-ynd/jack
+# Azure: https://portal.azure.com/ 
+
+# === gpu === #
+https://www.pyimagesearch.com/2017/09/27/setting-up-ubuntu-16-04-cuda-gpu-for-deep-learning-with-python/
+
+pip install wheel
+pip install pandas
+pip install scrapy
+pip install nltk
+pip install pytest
+pip pytest-instafail
+pip install torchvision
+pip install tensorflow-gpu
+pip install jsonschema==2.6.0
+pip install diskcache
+# pip install yaml
+pip install pyyaml
+pip install progressbar
+pip install spacy
+pip install --force-reinstall MySQL_python==1.2.4
+
+python
+import nltk
+nltk.download('gazetteers')
+nltk.download('names')
+nltk.download('punkt')
+
+mkdir -p 01_thesis/01_code
+mkdir 02_environment
+
+# === install specific packages === #
+sudo apt-get install unzip
+
+# === install python and pip === #
+sudo apt install python3-pip
+# python -m pip install --upgrade pip
+sudo apt-get install python3
+
+# === create environment === #
+sudo apt-get install python3-venv
+python3 -m venv 02_environment/01_general_env
+
+# === activate environment === #
+source 02_environment/01_general_env/bin/activate
+
+
+
+
+
+
+# === get fever code === #
+cd 01_thesis/01_code
+# git clone https://github.com/j6mes/fever-uclmr-system
+# git clone -b takuma-dev https://github.com/uclmr/fever 
+git clone https://github.com/BartMelman/fact_checking
+mv fact_checking/ fever
+cd fever
+bash initial_setup.sh
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+mkdir fever/99_tmp
+mkdir fever/04_models
+wget -O fever/99_tmp/esim.zip https://www.dropbox.com/sh/vnmc9pq4yrgl1sr/AAApUl9_AjLD65d0ln8rM3NDa/nli/snli/esim.zip
+unzip fever/99_tmp/esim.zip -d fever/04_models
+
+
+"load_dir": "___root_dir___/fever/04_models/esim"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# === in jack folder === #
+cd ../jack
+python3 -m pip install -e .[tf]
+
+./data/SQuAD/download.sh
+./data/GloVe/download.sh
+
+
+# === fever-baselines === #
+cd ../fever-baselines
+pip install -r requirements.txt
+cd ..
+
+pip install tensorflow
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Data Folder Structure 
+DATA_DIR : 01_data
+- RAW_DATA_DIR : 01_raw_data
+- WIKI_PAGES_DIR : 02_wikipedia_pages
+
+CONFIG_DIR : 02_config
+
+MODEL_DIR : 03_models
+
+RESULTS_DIR : 04_results
+
+TMP_DIR : 99_tmp
+
+# Setup
+Step 1: setup azure gpu <br>
+wget https://raw.githubusercontent.com/fastai/courses/master/setup/install-gpu-azure.sh <br>
+bash install-gpu-azure.sh <br>
+Step 2: create folders <br>
+mkdir -p 01_thesis/01_code <br>
+mkdir 02_environment <br>
+Step 3: install packages <br>
+sudo apt install python3-pip, python-pip <br>
+sudo apt-get install unzip, python3, python3-dev  <br>
+sudo apt-get install libpq-dev python-dev libxml2-dev libxslt1-dev libldap2-dev libsasl2-dev libffi-dev  <br> 
+Step 3: activate environment <br>
+sudo apt-get install python3-venv <br>
+python3 -m venv 02_environment/01_general_env <br>
+source 02_environment/01_general_env/bin/activate <br>
+Step 4: download nltk data
+cd 01_thesis/01_code
+install -r requirements.txt
+python nltk_data_download.py
+Step 5: get hexaf code
+git clone -b takuma-dev https://github.com/uclmr/fever 
+cd fever
+bash initial_setup.sh
+
+
+
+# FEVER Shared Task 2018
+The First Workshop on Fact Extraction and Verification
+
+## Docker Install
+```
+docker build -t fever-uclmr .
+```
+
+## Running
+It can be run with the following commands. The first command creates a dummy container with the shared FEVER data that is used by the submission.
+
+```bash
+#Set up the data container (run once on first time)
+docker create --name fever-common feverai/common
+
+#Start a server for interactive querying of the FEVER system via the web API on port 5000
+docker run --rm --volumes-from fever-common:ro -e CUDA_DEVICE=-1 -p 5000:5000 fever-uclmr
+
+#Alternatively, make predictions on a batch file and output it to `/out/predictions.jsonl` (set CUDA_DEVICE as appropriate)
+docker run --rm --volumes-from fever-common:ro -e CUDA_DEVICE=-1 -v $(pwd):/out fever-uclmr ./predict.sh /local/fever-common/data/fever-data/paper_dev.jsonl /out/predictions.jsonl
+```
+
+
+
+## Original Paper
+[UCL Machine Reading Group:
+Four Factor Framework For Fact Finding (HexaF)](http://aclweb.org/anthology/W18-5515)
+
+
+
+
+
+
+

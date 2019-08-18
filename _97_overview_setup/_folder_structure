@@ -1,0 +1,29 @@
+# === folder structure of fever folder === #
+
+DATA_DIR='_01_data'
+	RAW_DATA_DIR='_01_raw_data'
+	WIKI_PAGES_DIR='_02_wikipedia_pages'  # wiki-pages
+	DATABASE_DIR='_03_database'
+		wiki.db
+CONFIG_DIR='02_config'
+
+MODEL_DIR='_03_models'
+
+RESULTS_DIR='_04_results'
+	DOC_RET_DIR='_01_document_retrieval' 
+		NLP_DIR='_01_NLP'
+			TF_IDF_DIR='_01_TF_IDF'
+				DIRNAME is method based
+					dictionary_tf
+					dictionary_idf	
+					predictions, different methods (within same json file)
+					score
+	
+SCRIPTS_DIR='_10_scripts'
+	SCRIPTS_DATABASE_DIR='_01_database'
+	DOC_RET_DIR='_10_document_retrieval'
+DEPENDENCIES_DIR='_90_dependencies'
+	DRQA_DIR='_01_drqa'
+	CORE_NLP_DIR='_02_core_nlp'
+TMP_DIR='99_tmp'
+
