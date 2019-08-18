@@ -167,16 +167,27 @@ class NetFullyConnectedAutomated(nn.Module):
         proposal_layers = [nn.Linear(input_dim, width), nn.ReLU(), nn.BatchNorm1d(num_features=width)]
         # body
         for i in range(depth-1):
-            proposal_layers.append(
-                    nn.Linear(width, width),
-                    nn.ReLU(),
-                    nn.BatchNorm1d(num_features=width))
+            # proposal_layers.append(
+            #         nn.Linear(width, width),
+            #         nn.ReLU(),
+            #         nn.BatchNorm1d(num_features=width)
+            #         )
+            proposal_layers.append(nn.Linear(width, width))
+            proposal_layers.append(nn.ReLU())
+            proposal_layers.append(nn.BatchNorm1d(num_features=width))
 
         # output layer
+        # proposal_layers.append(
+        #     nn.Linear(width, output_dim),
+        #     nn.Sigmoid()
+        # )
         proposal_layers.append(
-            nn.Linear(width, output_dim),
+            nn.Linear(width, output_dim)
+        )
+        proposal_layers.append(
             nn.Sigmoid()
         )
+
 
         self.block = nn.Sequential(*proposal_layers)
 
@@ -332,7 +343,7 @@ class NeuralNetwork():
         self.nr_variables = self.data_nn.tensor_db.settings['nr_variables']
         self.file_name = 'model_' + self.method_database + '_' + get_file_name_from_variable_list([self.setup,
                 self.claim_data_set, self.nn_model_name, self.width, self.depth, self.nr_epochs,
-                self.fraction_training, self.batch_size, self.optimizer, self.flag_weighted_criterion])
+                self.fraction_training, self.batch_size, self.optimizer, self.flag_weighted_criterion, self.lr])
 
         self.path_model_dir = os.path.join(self.data_nn.tensor_db.path_results_dir, 
         	'neural_network', self.file_name)

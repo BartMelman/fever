@@ -123,20 +123,20 @@ if __name__ == '__main__':
     settings_model['seed'] = 1
     settings_model['lr'] = 0.001
     settings_model['momentum'] = 0.9 # 0.5
-    settings_model['optimizer'] = 'ADAM'
+    settings_model['optimizer'] = 'ADAM' # SGD
 
     if method_database == 'include_all':
         settings_model['batch_size'] = 256
         settings_model['params'] = {'batch_size': 256, 'shuffle': True}
     elif method_database == 'equal_class':
-        settings_model['batch_size'] = 128
-        settings_model['params'] = {'batch_size': 128, 'shuffle': True}
+        settings_model['batch_size'] = 64
+        settings_model['params'] = {'batch_size': 64, 'shuffle': True}
     else:
         raise ValueError('method_database not in list', method_database)
 
-    settings_model['nr_epochs'] = 5
+    settings_model['nr_epochs'] = 30
     settings_model['log_interval'] = 10
-    settings_model['width'] = 500
+    settings_model['width'] = 2000
     settings_model['depth'] = 2
     settings_model['flag_weighted_criterion'] = False
 
@@ -151,7 +151,7 @@ if __name__ == '__main__':
     # selection_generation_or_selected = 'ids_generated' # 'ids_generated'
     K = 5
     # threshold = 0.1
-    threshold_list = [0.99] # [0.01, 0.1, 0.25, 0.5, 0.75] # [0.001, 0.01, 0.05, 0.1, 0.2, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+    threshold_list = [0.25, 0.5, 0.75] # [0.001, 0.01, 0.05, 0.1, 0.2, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
     path_wiki_pages = os.path.join(config.ROOT, config.DATA_DIR, config.WIKI_PAGES_DIR, 'wiki-pages')
     path_wiki_database_dir = os.path.join(config.ROOT, config.DATA_DIR, config.DATABASE_DIR)
     wiki_database = WikiDatabaseSqlite(path_wiki_database_dir, path_wiki_pages)
