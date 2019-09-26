@@ -6,10 +6,10 @@ description:
 
 # startup (only once): 
 description: this script sets up the folder structure and downloads the wikipedia and claim dataset 
-bash setup.sh
+- bash setup.sh
 
 description: add all packages to virtual environment
-pip install -r requirements.txt
+- pip install -r requirements.txt
 
 # at start of command prompt
 description: this script sets the paths such that the files in 
