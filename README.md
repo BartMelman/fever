@@ -11,7 +11,7 @@ description: this script sets up the folder structure and downloads the wikipedi
 
 description: add all packages to virtual environment
 
-    $ pip install -r requirements.txt
+    $ pip3 install -r requirements.txt
 
 # startup
 description: this script sets the paths to the different directories in the folder. 
