@@ -19,3 +19,7 @@ This script needs to be called every time a command prompt is started.
 
     $ source set_paths.sh
 
+# tutorial
+description: run the jupyter notebook tutorial.ipynb to train and investigate the databases
+
+    $ jupyter notebook
