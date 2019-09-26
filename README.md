@@ -1,4 +1,16 @@
 # fever
+# description:
+
+
+# startup (only once): 
+# description: this script sets up the folder structure and downloads the wikipedia and claim dataset 
+bash setup.sh
+# description: add all packages to virtual environment
+
+
+# command prompt
+
+
 
 # Startup
 
