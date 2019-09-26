@@ -21,6 +21,7 @@ This script needs to be called every time a command prompt is started.
 
 # train databases
 description: 
+
     $ cd _10_scripts/_10_document_retrieval
     $ python3 wiki_database.py
     $ python3 claim_database.py
