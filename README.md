@@ -19,6 +19,14 @@ This script needs to be called every time a command prompt is started.
 
     $ source set_paths.sh
 
+# train databases
+description: 
+    $ cd _10_scripts/_10_document_retrieval
+    $ python3 wiki_database.py
+    $ python3 claim_database.py
+    $ python3 wiki_database_n_grams.py
+    $ python3 claim_database_n_grams.py
+
 # tutorial
 description: run the jupyter notebook tutorial.ipynb to train and investigate the databases
 
