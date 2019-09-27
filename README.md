@@ -5,12 +5,13 @@ The code in this repository has three functions:
 - (3) Create databases with the tokenized text/claim
 
 The advantages of this approach are:
-- (1) The data from the wikipedia pages and claims are stored in a different utf format. These databases have converted the text to the same format.
+- (1) The text in the databases are all stored in a common utf format. The raw data from the wikipedia pages and claims have different utf fromats. In the database creation process, I convert it to a common utf format.
 - (2) The Spacy package is used for tokenization and is better than tokenization with e.g. nltk, because it takes context into conisderation. This is costly and therefore the tokenized text is directly stored, so it can be retrieved quickly. 
-- (3) The databases are created with end-to-end checks to esure that the databases are constructed fully. If an error occurs and the database is called again, then an error is automatically generated.
+- (3) The databases are created with end-to-end checks to esure that the databases are constructed fully. If an error occurs and the database is called again, then an error is automatically generated and the database cannot be accessed. 
 
 # computer settings
 - python3
+- laptop
 
 # setup (only once): 
 description: this script sets up the folder structure and downloads the wikipedia and claim dataset 
