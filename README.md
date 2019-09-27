@@ -1,4 +1,4 @@
-# fever
+# FEVER
 The code in this repository has three functions: 
 - (1) Automatically download all the data from the FEVER Challenge, 
 - (2) Create databases to access the wikipedia pages/claims
