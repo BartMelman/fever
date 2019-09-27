@@ -2,9 +2,12 @@
 The code in this repository has three functions: 
 - (1) Automatically download all the data from the FEVER Challenge, 
 - (2) Create databases to access the wikipedia pages/claims
-- (3) Create databases with the tokenized text/claim using Spacy.
+- (3) Create databases with the tokenized text/claim
 
-The advantages of this code are: 
+The advantages of this approach are:
+- (1) The data from the wikipedia pages and claims are stored in a different utf format. These databases have converted the text to the same format.
+- (2) The Spacy package is used for tokenization and is better than tokenization with e.g. nltk, because it takes context into conisderation. This is costly and therefore the tokenized text is directly stored, so it can be retrieved quickly. 
+- (3) The databases are created with end-to-end checks to esure that the databases are constructed fully. If an error occurs and the database is called again, then an error is automatically generated.
 
 # computer settings
 - python3
