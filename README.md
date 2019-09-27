@@ -1,5 +1,7 @@
 # fever
-description:
+description: The code in this repository has three functions: (1) Automatically download all the data from the FEVER Challenge, (2) Create databases to access the wikipedia pages/claims and (3) Create databases with the tokenized text/claim using Spacy.
+
+The advantages of this code are: 
 
 # computer settings
 - python3
