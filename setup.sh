@@ -54,13 +54,13 @@ if [ ! -d $DATA_DIR/$WIKI_PAGES_DIR/wiki-pages ]; then
 fi
 
 # === corenlp === #
-if [ ! -d $DEPENDENCIES_DIR/$CORE_NLP_DIR ]; then
-    # download_if_not_exist https://www.dropbox.com/s/74uc24un1eoqwch/dep_packages.zip?dl=0 $TMP_DIR/dep_packages.zip
-    download_if_not_exist http://nlp.stanford.edu/software/stanford-corenlp-full-2018-10-05.zip $TMP_DIR/dep_packages.zip
-    unzip $TMP_DIR/dep_packages.zip -d $DEPENDENCIES_DIR
-    mv $DEPENDENCIES_DIR/stanford-corenlp-full-2018-10-05 $DEPENDENCIES_DIR/$CORE_NLP_DIR
-    rm $TMP_DIR/dep_packages.zip
-fi
+# if [ ! -d $DEPENDENCIES_DIR/$CORE_NLP_DIR ]; then
+#     # download_if_not_exist https://www.dropbox.com/s/74uc24un1eoqwch/dep_packages.zip?dl=0 $TMP_DIR/dep_packages.zip
+#     download_if_not_exist http://nlp.stanford.edu/software/stanford-corenlp-full-2018-10-05.zip $TMP_DIR/dep_packages.zip
+#     unzip $TMP_DIR/dep_packages.zip -d $DEPENDENCIES_DIR
+#     mv $DEPENDENCIES_DIR/stanford-corenlp-full-2018-10-05 $DEPENDENCIES_DIR/$CORE_NLP_DIR
+#     rm $TMP_DIR/dep_packages.zip
+# fi
 
 # === create data base === #
 if [ ! -d $DATA_DIR/$DATA_BASE_DIR ]; then
@@ -69,13 +69,14 @@ if [ ! -d $DATA_DIR/$DATA_BASE_DIR ]; then
 fi
 
 # === drqa === #
-if [ ! -d $DEPENDENCIES_DIR/$DRQA_DIR ]; then
-    git clone https://github.com/facebookresearch/DrQA.git $DEPENDENCIES_DIR/$DRQA_DIR
-fi
+# if [ ! -d $DEPENDENCIES_DIR/$DRQA_DIR ]; then
+#     git clone https://github.com/facebookresearch/DrQA.git $DEPENDENCIES_DIR/$DRQA_DIR
+# fi
 
 # # === create if idf data base === #
 # if [ ! -d $DEPENDENCIES_DIR/$DATABASE_DIR/if_idf.db ]; then
 #     python3 $SCRIPTS_DIR/$SCRIPTS_DATABASE_DIR/build_tfidf.py $DATA_DIR/$DATABASE_DIR/if_idf.db $DATA_DIR/$DATABASE_DIR/
 # fi
 
-
+# === spacy english tokenizer === #
+python3 -m spacy download en

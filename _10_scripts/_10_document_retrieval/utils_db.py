@@ -3,6 +3,19 @@ import json
 import pickle 
 import sys
 
+
+def create_path_dictionary(list_elements, dictionary):
+    first_element = list_elements[0]
+    if first_element not in dictionary:
+        dictionary[first_element] = {}
+
+    if len(list_elements) <= 1:
+        return dictionary
+    else:
+        dictionary[first_element] = create_path_dictionary(list_elements[1:], dictionary[first_element])
+        return dictionary
+
+
 def get_file_name_from_variable_list(variable_list, delimiter = '_'):
     file_name = ''
     for i in range(len(variable_list)):
@@ -83,6 +96,19 @@ class HiddenPrints:
         sys.stdout.close()
         sys.stdout = self._original_stdout
 
+def database_save_json(dictionary, path_file, encoding):
+    if os.path.isfile(path_file):
+        print('overwriting file: %s'%(path_file))
+    with open(path_file, encoding=encoding, mode="w") as f:
+        json.dump(dictionary, f, ensure_ascii=False)
+
+def database_load_json(path_file, encoding):
+    if os.path.isfile(path_file):
+        with open(path_file, encoding=encoding, mode='r') as f:
+            dictionary = json.load(f)
+    else:
+        raise ValueError('json file does not exist', path_file)
+    return dictionary
         
 # def save_dict_2_json(dictionary, path_file):
 #     if os.path.isfile(path_file):

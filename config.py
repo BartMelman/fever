@@ -3,7 +3,7 @@ from pathlib import Path
 
 # ROOT=os.path.dirname(os.getcwd())
 # ROOT='/home/BartMelman/01_university/01_thesis/fever'#os.getcwd()
-ROOT='/home/bmelman/C_disk/02_university/06_thesis/01_code/fever'#os.getcwd()
+ROOT='/home/bartmelman/01_fact_checking/fever'#os.getcwd()
 # ROOT=os.getcwd()
 
 # __data_dir__ = '_01_data'
@@ -41,3 +41,7 @@ TMP_DIR='99_tmp'
 
 TRUE='true'
 FALSE='false'
+
+
+
+DelimiterWords='*^'
